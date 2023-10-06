@@ -120,7 +120,20 @@ impl<'input> Lexer<'input> {
         Ok(curr_c)
     }
 
-    fn eat_space(&mut self) {}
+    fn eat_space(&mut self) {
+        loop {
+            let c = self.get_curr();
+            if let Ok(c) = c {
+                if c.is_whitespace() {
+                    let _ = self.eat();
+                } else {
+                    return;
+                }
+            } else {
+                return;
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -130,7 +143,7 @@ mod tests {
     #[test]
     fn parse_primitives() {
         // let code = "\"qwerty\" | map {'y' ? 'z' : x}";
-        let code = "}[|>=<<=!=?";
+        let code = " }[| >=<<=!=?   ";
         let mut lexer = Lexer::new(code);
 
         assert_eq!(lexer.next(), Ok(Lexem::LambdaBracketEnd));
