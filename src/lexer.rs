@@ -1,7 +1,9 @@
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum Lexem<'input> {
-    Identifier(&'input str),
-    StringLiteral(&'input str),
+use std::rc::Rc;
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub enum Lexem {
+    Identifier(Rc<str>),
+    StringLiteral(Rc<str>),
     CharLiteral(char),
     IntLiteral(i32),
     BoolLiteral(bool),
@@ -24,7 +26,7 @@ pub enum Lexem<'input> {
     Colon,              // :
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 enum LexerError {
     Eof,
     Unknown,
@@ -134,6 +136,10 @@ impl<'input> Lexer<'input> {
             }
         }
     }
+
+    pub fn is_eof(&self) -> bool {
+        self.rest.len() <= 0
+    }
 }
 
 #[cfg(test)]
@@ -154,7 +160,11 @@ mod tests {
         assert_eq!(lexer.next(), Ok(Lexem::LessEqual));
         assert_eq!(lexer.next(), Ok(Lexem::NotEqual));
         assert_eq!(lexer.next(), Ok(Lexem::Question));
-        assert_eq!(lexer.next(), Err(LexerError::Eof));
+        assert!(!lexer.is_eof());
+        let last = lexer.next();
+        assert!(lexer.is_eof());
+        assert_eq!(last, Err(LexerError::Eof));
+        assert!(lexer.is_eof());
         // assert_eq!(token, Lexem::StringLiteral("qwerty"));
     }
 
@@ -164,6 +174,6 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         let token = lexer.next().unwrap();
-        assert_eq!(token, Lexem::StringLiteral("qwerty"));
+        assert_eq!(token, Lexem::StringLiteral(Rc::from("qwerty")));
     }
 }
