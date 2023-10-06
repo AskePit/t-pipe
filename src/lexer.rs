@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub enum Lexem {
+pub enum Token {
     Identifier(Rc<str>),
     StringLiteral(Rc<str>),
     CharLiteral(char),
@@ -46,26 +46,26 @@ impl<'input> Lexer<'input> {
         }
     }
 
-    pub fn next(&mut self) -> Result<Lexem, LexerError> {
+    pub fn next(&mut self) -> Result<Token, LexerError> {
         self.eat_space();
 
         let c = self.eat()?;
 
         match c {
-            '[' => Ok(Lexem::ArrayBracketBegin),
-            ']' => Ok(Lexem::ArrayBracketEnd),
-            '{' => Ok(Lexem::LambdaBracketBegin),
-            '}' => Ok(Lexem::LambdaBracketEnd),
-            '+' => Ok(Lexem::Plus),
-            '-' => Ok(Lexem::Minus),
-            '=' => Ok(Lexem::Equal),
-            '|' => Ok(Lexem::Pipe),
-            '?' => Ok(Lexem::Question),
-            ':' => Ok(Lexem::Colon),
+            '[' => Ok(Token::ArrayBracketBegin),
+            ']' => Ok(Token::ArrayBracketEnd),
+            '{' => Ok(Token::LambdaBracketBegin),
+            '}' => Ok(Token::LambdaBracketEnd),
+            '+' => Ok(Token::Plus),
+            '-' => Ok(Token::Minus),
+            '=' => Ok(Token::Equal),
+            '|' => Ok(Token::Pipe),
+            '?' => Ok(Token::Question),
+            ':' => Ok(Token::Colon),
             '!' => {
                 let c2 = self.eat()?;
                 if c2 == '=' {
-                    Ok(Lexem::NotEqual)
+                    Ok(Token::NotEqual)
                 } else {
                     Err(LexerError::Expected('='))
                 }
@@ -74,23 +74,23 @@ impl<'input> Lexer<'input> {
                 Ok(c2) => {
                     if c2 == '=' {
                         self.eat()?;
-                        Ok(Lexem::LessEqual)
+                        Ok(Token::LessEqual)
                     } else {
-                        Ok(Lexem::Less)
+                        Ok(Token::Less)
                     }
                 }
-                Err(_) => Ok(Lexem::Less),
+                Err(_) => Ok(Token::Less),
             },
             '>' => match self.get_curr() {
                 Ok(c2) => {
                     if c2 == '=' {
                         self.eat()?;
-                        Ok(Lexem::GreaterEqual)
+                        Ok(Token::GreaterEqual)
                     } else {
-                        Ok(Lexem::Greater)
+                        Ok(Token::Greater)
                     }
                 }
-                Err(_) => Ok(Lexem::Greater),
+                Err(_) => Ok(Token::Greater),
             },
             _ => Err(LexerError::Unknown),
         }
@@ -152,14 +152,14 @@ mod tests {
         let code = " }[| >=<<=!=?   ";
         let mut lexer = Lexer::new(code);
 
-        assert_eq!(lexer.next(), Ok(Lexem::LambdaBracketEnd));
-        assert_eq!(lexer.next(), Ok(Lexem::ArrayBracketBegin));
-        assert_eq!(lexer.next(), Ok(Lexem::Pipe));
-        assert_eq!(lexer.next(), Ok(Lexem::GreaterEqual));
-        assert_eq!(lexer.next(), Ok(Lexem::Less));
-        assert_eq!(lexer.next(), Ok(Lexem::LessEqual));
-        assert_eq!(lexer.next(), Ok(Lexem::NotEqual));
-        assert_eq!(lexer.next(), Ok(Lexem::Question));
+        assert_eq!(lexer.next(), Ok(Token::LambdaBracketEnd));
+        assert_eq!(lexer.next(), Ok(Token::ArrayBracketBegin));
+        assert_eq!(lexer.next(), Ok(Token::Pipe));
+        assert_eq!(lexer.next(), Ok(Token::GreaterEqual));
+        assert_eq!(lexer.next(), Ok(Token::Less));
+        assert_eq!(lexer.next(), Ok(Token::LessEqual));
+        assert_eq!(lexer.next(), Ok(Token::NotEqual));
+        assert_eq!(lexer.next(), Ok(Token::Question));
         assert!(!lexer.is_eof());
         let last = lexer.next();
         assert!(lexer.is_eof());
@@ -174,6 +174,6 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         let token = lexer.next().unwrap();
-        assert_eq!(token, Lexem::StringLiteral(Rc::from("qwerty")));
+        assert_eq!(token, Token::StringLiteral(Rc::from("qwerty")));
     }
 }
