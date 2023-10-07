@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-use unescaper::Unescaper;
 use std::rc::Rc;
+use unescaper::Unescaper;
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub enum Token {
@@ -105,6 +105,14 @@ impl<'input> Lexer<'input> {
         self.rest = self.stash;
     }
 
+    fn get_stashed_string(&self) -> &str {
+        let begin = self.stash.as_ptr();
+        let end = self.rest.as_ptr();
+        let length = unsafe { end.offset_from(begin) } as usize;
+
+        &self.stash[..length]
+    }
+
     pub fn is_eof(&self) -> bool {
         self.rest.len() <= 0
     }
@@ -193,11 +201,7 @@ impl<'input> Lexer<'input> {
             }
         }
 
-        let begin = self.stash.as_ptr();
-        let end = self.rest.as_ptr();
-        let length = unsafe { end.offset_from(begin) } as usize;
-
-        return Ok(Rc::from(&self.stash[..length]));
+        return Ok(Rc::from(self.get_stashed_string()));
     }
 
     fn parse_char_literal(&mut self) -> Result<char, LexerError> {
@@ -227,21 +231,34 @@ impl<'input> Lexer<'input> {
             if c == quote {
                 break;
             }
-        };
+        }
 
-        let begin = self.stash.as_ptr();
-        let end = self.rest.as_ptr();
-        let length = unsafe { end.offset_from(begin) } as usize;
-
-        let escaped = &self.stash[1..length-1];
-        let unescaped = Unescaper::new(escaped).unescape().map_err(|_| LexerError::BadEscaping)?;
+        let quoted_escaped = self.get_stashed_string();
+        let escaped = &quoted_escaped[1..quoted_escaped.len() - 1];
+        let unescaped = Unescaper::new(escaped)
+            .unescape()
+            .map_err(|_| LexerError::BadEscaping)?;
 
         Ok(unescaped)
     }
 
     fn parse_int_literal(&mut self) -> Result<i32, LexerError> {
-        self.load();
-        !unimplemented!();
+        // parsing starts from the char after `'`.
+        loop {
+            let c = self.get_curr();
+            if let Ok(c) = c {
+                if c.is_numeric() {
+                    let _ = self.eat();
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+
+        let str_int = self.get_stashed_string();
+        return Ok(str_int.parse::<i32>().unwrap());
     }
 }
 
@@ -315,7 +332,22 @@ mod tests {
         assert_eq!(lexer.next(), Ok(Token::StringLiteral("/".to_string())));
 
         assert_eq!(lexer.next(), Ok(Token::StringLiteral("\r/".to_string())));
-        assert_eq!(lexer.next(), Ok(Token::StringLiteral("\";s;q\"".to_string())));
+        assert_eq!(
+            lexer.next(),
+            Ok(Token::StringLiteral("\";s;q\"".to_string()))
+        );
         assert_eq!(lexer.next(), Err(LexerError::Eof));
+    }
+
+    #[test]
+    fn parse_int() {
+        let code = "12 - 14 + 3";
+        let mut lexer = Lexer::new(code);
+
+        assert_eq!(lexer.next(), Ok(Token::IntLiteral(12)));
+        assert_eq!(lexer.next(), Ok(Token::Minus));
+        assert_eq!(lexer.next(), Ok(Token::IntLiteral(14)));
+        assert_eq!(lexer.next(), Ok(Token::Plus));
+        assert_eq!(lexer.next(), Ok(Token::IntLiteral(3)));
     }
 }
