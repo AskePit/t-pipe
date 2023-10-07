@@ -325,4 +325,50 @@ mod tests {
         assert_eq!(lexer.next(), Ok(Token::Plus));
         assert_eq!(lexer.next(), Ok(Token::IntLiteral(3)));
     }
+
+    #[test]
+    fn parse_real_programs() {
+        let code = r#"
+            "15 dogs"
+                | split ' '
+                | nth_map 0 { x + "th" }
+                | nth_map 1 { drop -1 }
+                | reverse
+                | join " the "
+        "#;
+
+        let mut lexer = Lexer::new(code);
+
+        macro_rules! assert_token {
+            ($token:expr) => {
+                assert_eq!(lexer.next(), Ok($token));
+            }
+        }
+
+        assert_token!(Token::StringLiteral("15 dogs".to_string()));
+        assert_token!(Token::Pipe);
+        assert_token!(Token::Identifier(Rc::from("split")));
+        assert_token!(Token::CharLiteral(' '));
+        assert_token!(Token::Pipe);
+        assert_token!(Token::Identifier(Rc::from("nth_map")));
+        assert_token!(Token::IntLiteral(0));
+        assert_token!(Token::LambdaBracketBegin);
+        assert_token!(Token::XValue);
+        assert_token!(Token::Plus);
+        assert_token!(Token::StringLiteral("th".to_string()));
+        assert_token!(Token::LambdaBracketEnd);
+        assert_token!(Token::Pipe);
+        assert_token!(Token::Identifier(Rc::from("nth_map")));
+        assert_token!(Token::IntLiteral(1));
+        assert_token!(Token::LambdaBracketBegin);
+        assert_token!(Token::Identifier(Rc::from("drop")));
+        assert_token!(Token::Minus);
+        assert_token!(Token::IntLiteral(1));
+        assert_token!(Token::LambdaBracketEnd);
+        assert_token!(Token::Pipe);
+        assert_token!(Token::Identifier(Rc::from("reverse")));
+        assert_token!(Token::Pipe);
+        assert_token!(Token::Identifier(Rc::from("join")));
+        assert_token!(Token::StringLiteral(" the ".to_string()));
+    }
 }
