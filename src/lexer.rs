@@ -82,11 +82,11 @@ impl<'input> Lexer<'input> {
         Ok(curr_c)
     }
 
-    fn eat_space(&mut self) {
+    fn eat_all(&mut self, f: impl Fn(char) -> bool) {
         loop {
             let c = self.get_curr();
             if let Ok(c) = c {
-                if c.is_whitespace() {
+                if f(c) {
                     let _ = self.eat();
                 } else {
                     return;
@@ -95,6 +95,10 @@ impl<'input> Lexer<'input> {
                 return;
             }
         }
+    }
+
+    fn eat_space(&mut self) {
+        self.eat_all(|c| c.is_whitespace());
     }
 
     fn save(&mut self) {
@@ -187,20 +191,8 @@ impl<'input> Lexer<'input> {
     }
 
     fn parse_identifier(&mut self) -> Result<Rc<str>, LexerError> {
-        // parsing starts from the second char. first char is remembered in `self.stash`
-        loop {
-            let c = self.get_curr();
-            if let Ok(c) = c {
-                if c.is_ascii_alphanumeric() || c == '_' {
-                    let _ = self.eat()?;
-                } else {
-                    break;
-                }
-            } else {
-                break;
-            }
-        }
-
+        // parsing starts from the second char. first char is remembered in `self.stash`s
+        self.eat_all(|c| c.is_ascii_alphanumeric() || c == '_');
         return Ok(Rc::from(self.get_stashed_string()));
     }
 
@@ -244,18 +236,7 @@ impl<'input> Lexer<'input> {
 
     fn parse_int_literal(&mut self) -> Result<i32, LexerError> {
         // parsing starts from the char after `'`.
-        loop {
-            let c = self.get_curr();
-            if let Ok(c) = c {
-                if c.is_numeric() {
-                    let _ = self.eat();
-                } else {
-                    break;
-                }
-            } else {
-                break;
-            }
-        }
+        self.eat_all(|c| c.is_numeric());
 
         let str_int = self.get_stashed_string();
         return Ok(str_int.parse::<i32>().unwrap());
