@@ -342,7 +342,7 @@ mod tests {
         macro_rules! assert_token {
             ($token:expr) => {
                 assert_eq!(lexer.next(), Ok($token));
-            }
+            };
         }
 
         assert_token!(Token::StringLiteral("15 dogs".to_string()));
