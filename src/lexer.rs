@@ -56,71 +56,6 @@ impl<'input> Lexer<'input> {
         }
     }
 
-    fn get_curr(&self) -> Result<char, LexerError> {
-        self.rest.chars().next().ok_or(LexerError::Eof)
-    }
-
-    fn get_curr2(&self) -> Result<char, LexerError> {
-        let mut chars = self.rest.chars();
-        chars.next().ok_or(LexerError::Eof)?;
-        chars.next().ok_or(LexerError::Eof)
-    }
-
-    fn eat(&mut self) -> Result<char, LexerError> {
-        let mut indices = self.rest.char_indices();
-        let (_curr_i, curr_c) = indices.next().ok_or(LexerError::Eof)?;
-
-        match indices.next() {
-            None => {
-                self.rest = &self.rest[self.rest.len()..];
-            }
-            Some((next_i, _next_c)) => {
-                self.rest = &self.rest[next_i..];
-            }
-        }
-
-        Ok(curr_c)
-    }
-
-    fn eat_all(&mut self, f: impl Fn(char) -> bool) {
-        loop {
-            let c = self.get_curr();
-            if let Ok(c) = c {
-                if f(c) {
-                    let _ = self.eat();
-                } else {
-                    return;
-                }
-            } else {
-                return;
-            }
-        }
-    }
-
-    fn eat_space(&mut self) {
-        self.eat_all(|c| c.is_whitespace());
-    }
-
-    fn save(&mut self) {
-        self.stash = self.rest;
-    }
-
-    fn load(&mut self) {
-        self.rest = self.stash;
-    }
-
-    fn get_stashed_string(&self) -> &str {
-        let begin = self.stash.as_ptr();
-        let end = self.rest.as_ptr();
-        let length = unsafe { end.offset_from(begin) } as usize;
-
-        &self.stash[..length]
-    }
-
-    pub fn is_eof(&self) -> bool {
-        self.rest.len() <= 0
-    }
-
     pub fn next(&mut self) -> Result<Token, LexerError> {
         self.eat_space();
         self.save();
@@ -188,6 +123,65 @@ impl<'input> Lexer<'input> {
                 }
             }
         }
+    }
+
+    pub fn is_eof(&self) -> bool {
+        self.rest.len() <= 0
+    }
+
+    fn get_curr(&self) -> Result<char, LexerError> {
+        self.rest.chars().next().ok_or(LexerError::Eof)
+    }
+
+    fn eat(&mut self) -> Result<char, LexerError> {
+        let mut indices = self.rest.char_indices();
+        let (_curr_i, curr_c) = indices.next().ok_or(LexerError::Eof)?;
+
+        match indices.next() {
+            None => {
+                self.rest = &self.rest[self.rest.len()..];
+            }
+            Some((next_i, _next_c)) => {
+                self.rest = &self.rest[next_i..];
+            }
+        }
+
+        Ok(curr_c)
+    }
+
+    fn eat_all(&mut self, f: impl Fn(char) -> bool) {
+        loop {
+            let c = self.get_curr();
+            if let Ok(c) = c {
+                if f(c) {
+                    let _ = self.eat();
+                } else {
+                    return;
+                }
+            } else {
+                return;
+            }
+        }
+    }
+
+    fn eat_space(&mut self) {
+        self.eat_all(|c| c.is_whitespace());
+    }
+
+    fn save(&mut self) {
+        self.stash = self.rest;
+    }
+
+    fn load(&mut self) {
+        self.rest = self.stash;
+    }
+
+    fn get_stashed_string(&self) -> &str {
+        let begin = self.stash.as_ptr();
+        let end = self.rest.as_ptr();
+        let length = unsafe { end.offset_from(begin) } as usize;
+
+        &self.stash[..length]
     }
 
     fn parse_identifier(&mut self) -> Result<Rc<str>, LexerError> {
