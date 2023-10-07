@@ -1,9 +1,12 @@
+#![allow(dead_code)]
+
+use unescaper::Unescaper;
 use std::rc::Rc;
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub enum Token {
     Identifier(Rc<str>),
-    StringLiteral(Rc<str>),
+    StringLiteral(String),
     CharLiteral(char),
     IntLiteral(i32),
     BoolLiteral(bool),
@@ -27,12 +30,15 @@ pub enum Token {
     Colon,              // :
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum LexerError {
     Eof,
-    ImpossibleChar,
-    Unknown,
     Expected(char),
+    Unexpected(char),
+    ExpectedXButGotY(String, char),
+    BadEscaping,
+    InvalidCharacterLiteral,
+    Unknown,
 }
 
 pub struct Lexer<'input> {
@@ -166,7 +172,7 @@ impl<'input> Lexer<'input> {
                 } else if c.is_numeric() {
                     self.parse_int_literal().map(|x| Token::IntLiteral(x))
                 } else {
-                    Err(LexerError::ImpossibleChar)
+                    Err(LexerError::Unexpected(c))
                 }
             }
         }
@@ -195,11 +201,42 @@ impl<'input> Lexer<'input> {
     }
 
     fn parse_char_literal(&mut self) -> Result<char, LexerError> {
-        !unimplemented!();
+        let c = self.parse_quoted('\'')?;
+
+        if c.len() > 1 {
+            Err(LexerError::InvalidCharacterLiteral)
+        } else {
+            c.chars().next().ok_or(LexerError::InvalidCharacterLiteral)
+        }
     }
 
-    fn parse_string_literal(&mut self) -> Result<Rc<str>, LexerError> {
-        !unimplemented!();
+    fn parse_string_literal(&mut self) -> Result<String, LexerError> {
+        self.parse_quoted('\"')
+    }
+
+    fn parse_quoted(&mut self, quote: char) -> Result<String, LexerError> {
+        // parsing starts from the char after `'`.
+        loop {
+            let c = self.eat()?;
+
+            if c == '\\' {
+                let _ = self.eat()?;
+                continue;
+            }
+
+            if c == quote {
+                break;
+            }
+        };
+
+        let begin = self.stash.as_ptr();
+        let end = self.rest.as_ptr();
+        let length = unsafe { end.offset_from(begin) } as usize;
+
+        let escaped = &self.stash[1..length-1];
+        let unescaped = Unescaper::new(escaped).unescape().map_err(|_| LexerError::BadEscaping)?;
+
+        Ok(unescaped)
     }
 
     fn parse_int_literal(&mut self) -> Result<i32, LexerError> {
@@ -247,5 +284,38 @@ mod tests {
         let last = lexer.next();
         assert_eq!(last, Err(LexerError::Eof));
         assert!(lexer.is_eof());
+    }
+
+    #[test]
+    fn parse_char_string_literal() {
+        let code = r#"
+            'a' '\n' '\'' 'fg' '' '\\' '\q'
+            "" "azaz" "Q\werty" "14\n" "\\" "\/" "\r/" "\";s;q\""
+            "\\\"
+        "#;
+        let mut lexer = Lexer::new(code);
+
+        assert_eq!(lexer.next(), Ok(Token::CharLiteral('a')));
+        assert_eq!(lexer.next(), Ok(Token::CharLiteral('\n')));
+        assert_eq!(lexer.next(), Ok(Token::CharLiteral('\'')));
+        assert_eq!(lexer.next(), Err(LexerError::InvalidCharacterLiteral));
+        assert_eq!(lexer.next(), Err(LexerError::InvalidCharacterLiteral));
+        assert_eq!(lexer.next(), Ok(Token::CharLiteral('\\')));
+        assert_eq!(lexer.next(), Err(LexerError::BadEscaping));
+        assert_eq!(lexer.next(), Ok(Token::StringLiteral("".to_string())));
+        assert_eq!(lexer.next(), Ok(Token::StringLiteral("azaz".to_string())));
+        assert_eq!(lexer.next(), Err(LexerError::BadEscaping));
+        assert_eq!(lexer.next(), Ok(Token::StringLiteral("14\n".to_string())));
+        assert_eq!(lexer.next(), Ok(Token::StringLiteral("\\".to_string())));
+
+        // it's a Unescaper crate specific!
+        // Motivation:
+        // https://www.ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf
+        // On page 4 it says: "\/ represents the solidus character (U+002F)."
+        assert_eq!(lexer.next(), Ok(Token::StringLiteral("/".to_string())));
+
+        assert_eq!(lexer.next(), Ok(Token::StringLiteral("\r/".to_string())));
+        assert_eq!(lexer.next(), Ok(Token::StringLiteral("\";s;q\"".to_string())));
+        assert_eq!(lexer.next(), Err(LexerError::Eof));
     }
 }
