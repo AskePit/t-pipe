@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
-pub mod ast;
+mod ast;
 mod lexer;
 
-use crate::parser::ast::{AstNode, Literal};
+use crate::parser::ast::{AstRootNode, ExpressionNode, LiteralNode};
 use crate::parser::lexer::{LexerError, Token};
 use crate::parser::ParserError::Unknown;
 use ast::Ast;
@@ -31,21 +31,22 @@ impl<'input> Parser<'input> {
         }
     }
 
-    pub fn parse(&mut self) -> Ast {
-        Ast {
-            root: Box::new(AstNode::Literal(Literal::String("root".to_string()))),
-        };
-        unimplemented!();
+    pub fn parse(&mut self) -> Result<Ast, ParserError> {
+        Ok(Ast {
+            root: self.parse_program()?,
+        })
     }
 
-    fn parse_program(&mut self) -> Result<(), ParserError> {
-        self.parse_expression()
+    fn parse_program(&mut self) -> Result<(AstRootNode), ParserError> {
+        Ok(AstRootNode {
+            expression: self.parse_expression()?,
+        })
     }
 
-    fn parse_expression(&mut self) -> Result<(), ParserError> {
+    fn parse_expression(&mut self) -> Result<(Box<ExpressionNode>), ParserError> {
         self.parse_easy_to_parse_expression()?;
         self.parse_post_expression()?;
-        Ok(())
+        unimplemented!();
     }
 
     fn parse_easy_to_parse_expression(&mut self) -> Result<(), ParserError> {

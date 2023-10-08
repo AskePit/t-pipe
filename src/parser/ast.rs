@@ -1,164 +1,87 @@
-pub enum AstNode {
-    Program(Expression),
-    Expression(Expression),
-    EasyToParseExpression(EasyToParseExpression),
-    PostExpression,
-    Literal(Literal),
-    Array(LiteralSeq),
-    LiteralSeqTail(LiteralSeqTail),
-    TernaryOperator(TernaryOperator),
-    CompareExpression(CompareExpression),
-    XEqExpression(XEqExpression),
-    CompareOperation(CompareOperation),
-    LogicExpression(LogicExpression),
-    LogicOperation(LogicOperation),
-    ArithmeticExpression(ArithmeticExpression),
-    ArithmeticOperation(ArithmeticOperation),
-    FunctionsChain(FunctionsChain),
-    FunctionsChainStart(FunctionsChainStart),
-    FunctionsChainRest(FunctionsChainRest),
-    FunctionsChainRestTail(FunctionsChainRestTail),
-    FunctionCall(FunctionCall),
-    FunctionName(String),
-    FunctionArguments(FunctionArguments),
-    FunctionArgumentsTail(FunctionArgumentsTail),
-    FunctionArgument(FunctionArgument),
-    Lambda(Lambda),
-    NamedLambda(String),
-    AnonymousLambda(LambdaExpression),
-    LambdaExpression(LambdaExpression),
-    ImplicitXChain(ImplicitXChain),
+pub struct Ast {
+    pub root: AstRootNode,
 }
 
-pub struct Expression {
-    pre: Box<EasyToParseExpression>,
-    post: Box<PostExpression>,
+pub struct AstRootNode {
+    pub expression: Box<ExpressionNode>,
 }
 
-pub enum EasyToParseExpression {
-    Literal(Literal),
+pub enum ExpressionNode {
+    Literal(LiteralNode),
     XValue,
-    FunctionsChain(FunctionsChain),
-    Expression(Expression),
+    FunctionsChain(FunctionsChainNode),
+    ArithmeticExpression(ArithmeticExpressionNode),
+    LogicExpression(LogicExpressionNode),
+    CompareExpression(CompareExpressionNode),
+    TernaryOperator(TernaryOperatorNode),
 }
 
-pub enum PostExpression {
-    ArithmeticExpression(ArithmeticExpression),
-    LogicExpression(LogicExpression),
-    CompareExpression(CompareExpression),
-    TernaryOperator(TernaryOperator),
-    Empty,
-}
-
-pub enum Literal {
+pub enum LiteralNode {
     String(String),
     Char(char),
     Int(i32),
     Bool(bool),
-    Array(LiteralSeq),
+    Array(ArrayNode),
 }
 
-pub struct FunctionsChain {
-    start: Box<FunctionsChainStart>,
-    rest: Box<FunctionsChainRest>,
+pub struct ArrayNode {
+    array: Vec<Box<LiteralNode>>,
 }
 
-pub struct LiteralSeq {
-    head: Box<Literal>,
-    tail: Box<LiteralSeqTail>,
+pub struct FunctionsChainNode {
+    data: Box<FunctionDataNode>,
+    function_calls: Vec<Box<FunctionCallNode>>,
 }
 
-pub enum LiteralSeqTail {
-    LiteralSeq(LiteralSeq),
-    Empty,
-}
-
-pub enum FunctionsChainStart {
-    Literal(Literal),
+pub enum FunctionDataNode {
+    Literal(LiteralNode),
     XValue,
 }
 
-pub struct FunctionsChainRest {
-    function_call: Box<FunctionCall>,
-    chain_tail: Box<FunctionsChainRestTail>,
-}
-
-pub enum FunctionsChainRestTail {
-    FunctionsChainRest(FunctionsChainRest),
-    Empty,
-}
-
-pub struct FunctionCall {
+pub struct FunctionCallNode {
     name: String,
-    arguments: Box<FunctionArguments>,
+    arguments: Vec<Box<FunctionArgumentNode>>,
 }
 
-pub struct FunctionArguments {
-    head: Box<FunctionArgument>,
-    tail: Box<FunctionArgumentsTail>,
+pub enum FunctionArgumentNode {
+    Expression(ExpressionNode),
+    Lambda(LambdaNode),
 }
 
-pub enum FunctionArgument {
-    Expression(Expression),
-    Lambda(Lambda),
-}
-
-pub enum FunctionArgumentsTail {
-    FunctionsChainRest(FunctionsChainRest),
-    Empty,
-}
-
-pub enum Lambda {
-    AnonymousLambda(LambdaExpression),
+pub enum LambdaNode {
+    AnonymousLambda(ExpressionNode),
     NamedLambda(String),
 }
 
-pub enum LambdaExpression {
-    Expression(Expression),
-    ImplicitXChain(ImplicitXChain),
+pub struct ArithmeticExpressionNode {
+    l_expression: Box<ExpressionNode>,
+    operation: ArithmeticOperationNode,
+    r_expression: Box<ExpressionNode>,
 }
 
-pub struct ImplicitXChain {
-    function_call: Box<FunctionCall>,
-    chain_tail: Box<FunctionsChainRestTail>,
-}
-
-pub struct ArithmeticExpression {
-    operation: ArithmeticOperation,
-    expression: Box<Expression>,
-}
-
-pub enum ArithmeticOperation {
+pub enum ArithmeticOperationNode {
     Plus,
     Minus,
 }
 
-pub struct LogicExpression {
-    operation: LogicOperation,
-    expression: Box<Expression>,
+pub struct LogicExpressionNode {
+    l_expression: Box<ExpressionNode>,
+    operation: LogicOperationNode,
+    r_expression: Box<ExpressionNode>,
 }
 
-pub enum LogicOperation {
+pub enum LogicOperationNode {
     And,
     Or,
 }
 
-pub enum CompareExpression {
-    NormalCompareExpression(NormalCompareExpression),
-    XEqExpression(XEqExpression),
+pub struct CompareExpressionNode {
+    l_expression: Box<ExpressionNode>,
+    operation: Box<CompareOperationNode>,
+    r_expression: Box<ExpressionNode>,
 }
 
-pub struct NormalCompareExpression {
-    operation: Box<CompareOperation>,
-    expression: Box<Expression>,
-}
-
-pub enum XEqExpression {
-    Literal(Literal),
-    ArithmeticExpression(ArithmeticExpression),
-}
-
-pub enum CompareOperation {
+pub enum CompareOperationNode {
     Eq,
     Neq,
     Lt,
@@ -167,13 +90,7 @@ pub enum CompareOperation {
     Ge,
 }
 
-pub struct TernaryOperator {
-    true_expression: Box<Expression>,
-    false_expression: Box<Expression>,
+pub struct TernaryOperatorNode {
+    true_expression: Box<ExpressionNode>,
+    false_expression: Box<ExpressionNode>,
 }
-
-pub struct Ast {
-    pub root: Box<AstNode>,
-}
-
-impl Ast {}
