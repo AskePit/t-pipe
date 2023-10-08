@@ -30,6 +30,7 @@ pub enum Token {
     Pipe,               // |
     Question,           // ?
     Colon,              // :
+    Comma,              // ,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -77,6 +78,7 @@ impl<'input> Lexer<'input> {
             '|' => Ok(Token::Pipe),
             '?' => Ok(Token::Question),
             ':' => Ok(Token::Colon),
+            ',' => Ok(Token::Comma),
             '!' => {
                 let c2 = self.eat()?;
                 if c2 == '=' {
@@ -247,7 +249,7 @@ mod tests {
 
     #[test]
     fn parse_primitives() {
-        let code = " }[| >=<<=!=?   ";
+        let code = " }[| >=<<=!=?,   ";
         let mut lexer = Lexer::new(code);
 
         assert_eq!(lexer.next(), Ok(Token::LambdaBracketEnd));
@@ -258,6 +260,7 @@ mod tests {
         assert_eq!(lexer.next(), Ok(Token::LessEqual));
         assert_eq!(lexer.next(), Ok(Token::NotEqual));
         assert_eq!(lexer.next(), Ok(Token::Question));
+        assert_eq!(lexer.next(), Ok(Token::Comma));
         assert!(!lexer.is_eof());
         let last = lexer.next();
         assert!(lexer.is_eof());
