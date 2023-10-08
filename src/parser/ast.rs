@@ -16,6 +16,14 @@ pub enum ExpressionNode {
     TernaryOperator(TernaryOperatorNode),
 }
 
+pub enum RightExpressionPart {
+    Arithmetic((ArithmeticOperationNode, Box<ExpressionNode>)),
+    Logic((LogicOperationNode, Box<ExpressionNode>)),
+    Compare((CompareOperationNode, Box<ExpressionNode>)),
+    TernaryOperator(Box<ExpressionNode>),
+    FunctionChain(Box<ExpressionNode>),
+}
+
 pub enum LiteralNode {
     String(String),
     Char(char),
@@ -25,12 +33,12 @@ pub enum LiteralNode {
 }
 
 pub struct ArrayNode {
-    array: Vec<Box<LiteralNode>>,
+    pub array: Vec<Box<LiteralNode>>,
 }
 
 pub struct FunctionsChainNode {
-    data: Box<FunctionDataNode>,
-    function_calls: Vec<Box<FunctionCallNode>>,
+    pub data: Box<FunctionDataNode>,
+    pub function_calls: Vec<Box<FunctionCallNode>>,
 }
 
 pub enum FunctionDataNode {
@@ -39,8 +47,8 @@ pub enum FunctionDataNode {
 }
 
 pub struct FunctionCallNode {
-    name: String,
-    arguments: Vec<Box<FunctionArgumentNode>>,
+    pub name: String,
+    pub arguments: Vec<Box<FunctionArgumentNode>>,
 }
 
 pub enum FunctionArgumentNode {
@@ -54,9 +62,9 @@ pub enum LambdaNode {
 }
 
 pub struct ArithmeticExpressionNode {
-    l_expression: Box<ExpressionNode>,
-    operation: ArithmeticOperationNode,
-    r_expression: Box<ExpressionNode>,
+    pub l_expression: Box<ExpressionNode>,
+    pub operation: ArithmeticOperationNode,
+    pub r_expression: Box<ExpressionNode>,
 }
 
 pub enum ArithmeticOperationNode {
@@ -65,9 +73,9 @@ pub enum ArithmeticOperationNode {
 }
 
 pub struct LogicExpressionNode {
-    l_expression: Box<ExpressionNode>,
-    operation: LogicOperationNode,
-    r_expression: Box<ExpressionNode>,
+    pub l_expression: Box<ExpressionNode>,
+    pub operation: LogicOperationNode,
+    pub r_expression: Box<ExpressionNode>,
 }
 
 pub enum LogicOperationNode {
@@ -76,9 +84,9 @@ pub enum LogicOperationNode {
 }
 
 pub struct CompareExpressionNode {
-    l_expression: Box<ExpressionNode>,
-    operation: Box<CompareOperationNode>,
-    r_expression: Box<ExpressionNode>,
+    pub l_expression: Box<ExpressionNode>,
+    pub operation: CompareOperationNode,
+    pub r_expression: Box<ExpressionNode>,
 }
 
 pub enum CompareOperationNode {
@@ -91,6 +99,6 @@ pub enum CompareOperationNode {
 }
 
 pub struct TernaryOperatorNode {
-    true_expression: Box<ExpressionNode>,
-    false_expression: Box<ExpressionNode>,
+    pub true_expression: Box<ExpressionNode>,
+    pub false_expression: Box<ExpressionNode>,
 }

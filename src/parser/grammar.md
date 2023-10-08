@@ -4,19 +4,19 @@
     - expression
 
 - expression:
-  easy_to_parse_expression post_expression
+    - left_expression right_expression
 
-- easy_to_parse_expression:
+- left_expression:
     - literal
     - x_value
-    - functions_chain
     - **(** expression **)**
 
-- post_expression:
+- right_expression:
     - arithmetic_expression
     - logic_expression
     - compare_expression
     - ternary_operator
+    - functions_chain
     - **\<EMPTY\>**
 
 - x_value: **x**
