@@ -214,11 +214,11 @@ impl<'input> Parser<'input> {
 
             let token = self.lexer.next()?;
 
-            if token == Token::ArrayBracketEnd {
+            if token == ArrayBracketEnd {
                 return Ok(node);
             }
 
-            if token != Token::Comma {
+            if token != Comma {
                 return Err(ParserError::Unknown);
             }
         }
@@ -251,7 +251,7 @@ impl<'input> Parser<'input> {
 
             let token = self.lexer.next()?;
             match &token {
-                Token::Identifier(fname) => node.name = fname.to_string(),
+                Token::Identifier(name) => node.name = name.to_string(),
                 _ => break,
             };
 
