@@ -15,6 +15,8 @@ pub enum Token {
     ArrayBracketEnd,    // ]
     LambdaBracketBegin, // {
     LambdaBracketEnd,   // }
+    ParenthesisBegin,   // (
+    ParenthesisEnd,     // (
     Plus,               // +
     Minus,              // -
     Equal,              // =
@@ -67,6 +69,8 @@ impl<'input> Lexer<'input> {
             ']' => Ok(Token::ArrayBracketEnd),
             '{' => Ok(Token::LambdaBracketBegin),
             '}' => Ok(Token::LambdaBracketEnd),
+            '(' => Ok(Token::ParenthesisBegin),
+            ')' => Ok(Token::ParenthesisEnd),
             '+' => Ok(Token::Plus),
             '-' => Ok(Token::Minus),
             '=' => Ok(Token::Equal),
@@ -263,12 +267,14 @@ mod tests {
 
     #[test]
     fn parse_identifiers() {
-        let code = "map { x | drop }";
+        let code = "map { (x) | drop }";
         let mut lexer = Lexer::new(code);
 
         assert_eq!(lexer.next(), Ok(Token::Identifier(Rc::from("map"))));
         assert_eq!(lexer.next(), Ok(Token::LambdaBracketBegin));
+        assert_eq!(lexer.next(), Ok(Token::ParenthesisBegin));
         assert_eq!(lexer.next(), Ok(Token::XValue));
+        assert_eq!(lexer.next(), Ok(Token::ParenthesisEnd));
         assert_eq!(lexer.next(), Ok(Token::Pipe));
         assert_eq!(lexer.next(), Ok(Token::Identifier(Rc::from("drop"))));
         assert_eq!(lexer.next(), Ok(Token::LambdaBracketEnd));
