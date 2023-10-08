@@ -20,8 +20,8 @@ pub enum RightExpressionPart {
     Arithmetic((ArithmeticOperationNode, Box<ExpressionNode>)),
     Logic((LogicOperationNode, Box<ExpressionNode>)),
     Compare((CompareOperationNode, Box<ExpressionNode>)),
-    TernaryOperator(Box<ExpressionNode>),
-    FunctionChain(Box<ExpressionNode>),
+    TernaryOperator((Box<ExpressionNode>, Box<ExpressionNode>)),
+    FunctionsChain(Vec<Box<FunctionCallNode>>),
 }
 
 pub enum LiteralNode {
@@ -99,6 +99,7 @@ pub enum CompareOperationNode {
 }
 
 pub struct TernaryOperatorNode {
+    pub check_expression: Box<ExpressionNode>,
     pub true_expression: Box<ExpressionNode>,
     pub false_expression: Box<ExpressionNode>,
 }
