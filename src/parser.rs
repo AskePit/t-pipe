@@ -3,7 +3,12 @@
 mod ast;
 mod lexer;
 
-use crate::parser::ast::{ArithmeticExpressionNode, ArithmeticOperationNode, ArrayNode, AstRootNode, CompareExpressionNode, CompareOperationNode, ExpressionNode, FunctionCallNode, FunctionDataNode, FunctionsChainNode, LiteralNode, LogicExpressionNode, LogicOperationNode, RightExpressionPart, TernaryOperatorNode};
+use crate::parser::ast::{
+    ArithmeticExpressionNode, ArithmeticOperationNode, ArrayNode, AstRootNode,
+    CompareExpressionNode, CompareOperationNode, ExpressionNode, FunctionArgumentNode,
+    FunctionCallNode, FunctionDataNode, FunctionsChainNode, LambdaNode, LiteralNode,
+    LogicExpressionNode, LogicOperationNode, RightExpressionPart, TernaryOperatorNode,
+};
 use crate::parser::lexer::{LexerError, Token};
 use ast::Ast;
 use lexer::Lexer;
@@ -188,100 +193,101 @@ impl<'input> Parser<'input> {
     }
 
     fn parse_array(&mut self) -> Result<ArrayNode, ParserError> {
-        unimplemented!();
-    }
+        let mut node = ArrayNode { array: vec![] };
 
-    fn parse_literal_seq_tail(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
+        loop {
+            let token = self.lexer.next()?;
+
+            use Token::*;
+            let literal = match &token {
+                ArrayBracketBegin | StringLiteral(_) | IntLiteral(_) | BoolLiteral(_) => {
+                    Ok(Box::new(self.parse_literal(token.clone())?))
+                }
+                _ => Err(ParserError::Unknown),
+            };
+
+            if let Ok(l) = literal {
+                node.array.push(l);
+            } else {
+                break;
+            }
+
+            let token = self.lexer.next()?;
+
+            if token == Token::ArrayBracketEnd {
+                return Ok(node);
+            }
+
+            if token != Token::Comma {
+                return Err(ParserError::Unknown);
+            }
+        }
+        Ok(node)
     }
 
     fn parse_ternary_operator(
         &mut self,
     ) -> Result<(Box<ExpressionNode>, Box<ExpressionNode>), ParserError> {
-        unimplemented!();
+        let true_expression = self.parse_expression()?;
+
+        let token = self.lexer.next()?;
+        if token != Token::Colon {
+            return Err(ParserError::Unknown);
+        }
+
+        let false_expression = self.parse_expression()?;
+
+        Ok((true_expression, false_expression))
     }
 
-    fn parse_compare_expression(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
+    fn parse_functions_chain(&mut self) -> Result<Vec<FunctionCallNode>, ParserError> {
+        let mut res: Vec<FunctionCallNode> = vec![];
+
+        loop {
+            let mut node = FunctionCallNode {
+                name: "".to_string(),
+                arguments: vec![],
+            };
+
+            let token = self.lexer.next()?;
+            match &token {
+                Token::Identifier(fname) => node.name = fname.to_string(),
+                _ => break,
+            };
+
+            loop {
+                let token = self.lexer.next()?;
+
+                if token == Token::Pipe {
+                    break;
+                }
+
+                let argument = match token {
+                    Token::LambdaBracketBegin => Box::new(FunctionArgumentNode::Lambda(
+                        LambdaNode::AnonymousLambda(self.parse_anonymous_lambda()?),
+                    )),
+                    Token::Identifier(id) => Box::new(FunctionArgumentNode::Lambda(
+                        LambdaNode::NamedLambda(id.to_string()),
+                    )),
+                    _ => Box::new(FunctionArgumentNode::Expression(self.parse_expression()?)),
+                };
+
+                node.arguments.push(argument);
+            }
+
+            res.push(node)
+        }
+        Ok(res)
     }
 
-    fn parse_x_eq_expression(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
-    }
+    fn parse_anonymous_lambda(&mut self) -> Result<Box<ExpressionNode>, ParserError> {
+        let expr = self.parse_expression()?;
 
-    fn parse_compare_operation(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
-    }
-
-    fn parse_logic_expression(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
-    }
-
-    fn parse_logic_operation(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
-    }
-
-    fn parse_arithmetic_expression(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
-    }
-
-    fn parse_arithmetic_operation(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
-    }
-
-    fn parse_functions_chain(&mut self) -> Result<Vec<Box<FunctionCallNode>>, ParserError> {
-        unimplemented!();
-    }
-
-    fn parse_functions_chain_start(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
-    }
-
-    fn parse_functions_chain_rest(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
-    }
-
-    fn parse_functions_chain_rest_tail(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
-    }
-
-    fn parse_function_call(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
-    }
-
-    fn parse_function_name(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
-    }
-
-    fn parse_function_arguments(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
-    }
-
-    fn parse_function_arguments_tail(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
-    }
-
-    fn parse_function_argument(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
-    }
-
-    fn parse_lambda(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
-    }
-
-    fn parse_named_lambda(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
-    }
-
-    fn parse_anonymous_lambda(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
-    }
-
-    fn parse_lambda_expression(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
-    }
-
-    fn parse_implicit_x_chain(&mut self) -> Result<(), ParserError> {
-        unimplemented!();
+        let token = self.lexer.next()?;
+        if token == Token::LambdaBracketEnd {
+            Ok(expr)
+        } else {
+            Err(ParserError::Unknown)
+        }
     }
 }

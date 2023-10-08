@@ -21,7 +21,7 @@ pub enum RightExpressionPart {
     Logic((LogicOperationNode, Box<ExpressionNode>)),
     Compare((CompareOperationNode, Box<ExpressionNode>)),
     TernaryOperator((Box<ExpressionNode>, Box<ExpressionNode>)),
-    FunctionsChain(Vec<Box<FunctionCallNode>>),
+    FunctionsChain(Vec<FunctionCallNode>),
 }
 
 pub enum LiteralNode {
@@ -38,7 +38,7 @@ pub struct ArrayNode {
 
 pub struct FunctionsChainNode {
     pub data: Box<FunctionDataNode>,
-    pub function_calls: Vec<Box<FunctionCallNode>>,
+    pub function_calls: Vec<FunctionCallNode>,
 }
 
 pub enum FunctionDataNode {
@@ -52,12 +52,12 @@ pub struct FunctionCallNode {
 }
 
 pub enum FunctionArgumentNode {
-    Expression(ExpressionNode),
+    Expression(Box<ExpressionNode>),
     Lambda(LambdaNode),
 }
 
 pub enum LambdaNode {
-    AnonymousLambda(ExpressionNode),
+    AnonymousLambda(Box<ExpressionNode>),
     NamedLambda(String),
 }
 
