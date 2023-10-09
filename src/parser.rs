@@ -13,6 +13,7 @@ use crate::parser::lexer::{LexerError, Token};
 use ast::Ast;
 use lexer::Lexer;
 
+#[derive(Debug)]
 pub enum ParserError {
     LexerError(LexerError),
     Unknown,
@@ -130,7 +131,12 @@ impl<'input> Parser<'input> {
     }
 
     fn parse_right_expression(&mut self) -> Result<Option<RightExpressionPart>, ParserError> {
-        let token = self.lexer.next()?;
+        let token = self.lexer.next();
+
+        if let Err(LexerError::Eof) = token {
+            return Ok(None);
+        }
+        let token = token?;
 
         use Token::*;
         match token {
@@ -288,6 +294,68 @@ impl<'input> Parser<'input> {
             Ok(expr)
         } else {
             Err(ParserError::Unknown)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse(code: &str) -> Ast {
+        let mut parser = Parser::new(code);
+
+        let ast = parser.parse();
+        assert!(ast.is_ok());
+
+        ast.unwrap()
+    }
+
+    #[test]
+    fn parse_the_simplest() {
+        {
+            let ast = parse("2");
+            assert_eq!(
+                *ast.root.expression,
+                ExpressionNode::Literal(LiteralNode::Int(2))
+            );
+        }
+        {
+            let ast = parse("\"1561\"");
+            assert_eq!(
+                *ast.root.expression,
+                ExpressionNode::Literal(LiteralNode::String("1561".to_string()))
+            );
+        }
+        {
+            let ast = parse(r#" x + "th" "#);
+            assert_eq!(
+                *ast.root.expression,
+                ExpressionNode::ArithmeticExpression(ArithmeticExpressionNode {
+                    l_expression: Box::new(ExpressionNode::XValue),
+                    operation: ArithmeticOperationNode::Plus,
+                    r_expression: Box::new(ExpressionNode::Literal(LiteralNode::String(
+                        "th".to_string()
+                    ))),
+                })
+            );
+        }
+        {
+            let ast = parse("\"qwerty\" | drop 2");
+            assert_eq!(
+                *ast.root.expression,
+                ExpressionNode::FunctionsChain(FunctionsChainNode {
+                    data: Box::new(FunctionDataNode::Literal(LiteralNode::String(
+                        "\"qwerty\"".to_string()
+                    ))),
+                    function_calls: vec![FunctionCallNode {
+                        name: "drop".to_string(),
+                        arguments: vec![Box::new(FunctionArgumentNode::Expression(Box::new(
+                            ExpressionNode::Literal(LiteralNode::Int(2))
+                        )))],
+                    }],
+                })
+            );
         }
     }
 }
