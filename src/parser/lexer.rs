@@ -31,6 +31,7 @@ pub enum Token {
     Question,           // ?
     Colon,              // :
     Comma,              // ,
+    Eof,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -60,6 +61,16 @@ impl<'input> Lexer<'input> {
     }
 
     pub fn next(&mut self) -> Result<Token, LexerError> {
+        let res = self.next_impl();
+
+        if res.is_err() && *res.as_ref().err().unwrap_or(&LexerError::Unknown) == LexerError::Eof {
+            Ok(Token::Eof)
+        } else {
+            res
+        }
+    }
+
+    pub fn next_impl(&mut self) -> Result<Token, LexerError> {
         self.eat_space();
         self.save();
 
