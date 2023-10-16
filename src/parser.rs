@@ -44,12 +44,15 @@ impl<'input> Parser<'input> {
 
     fn parse_program(&mut self) -> Result<AstRootNode, ParserError> {
         Ok(AstRootNode {
-            expression: self.parse_expression()?,
+            expression: self.parse_expression(None)?,
         })
     }
 
-    fn parse_expression(&mut self) -> Result<Box<ExpressionNode>, ParserError> {
-        let left = self.parse_left_expression()?;
+    fn parse_expression(
+        &mut self,
+        first_token: Option<Token>,
+    ) -> Result<Box<ExpressionNode>, ParserError> {
+        let left = self.parse_left_expression(first_token)?;
         let right = self.parse_right_expression()?;
 
         if let Some(r) = right {
@@ -105,8 +108,15 @@ impl<'input> Parser<'input> {
         }
     }
 
-    fn parse_left_expression(&mut self) -> Result<Box<ExpressionNode>, ParserError> {
-        let token = self.lexer.next()?;
+    fn parse_left_expression(
+        &mut self,
+        first_token: Option<Token>,
+    ) -> Result<Box<ExpressionNode>, ParserError> {
+        let token = if let Some(t) = first_token {
+            t
+        } else {
+            self.lexer.next()?
+        };
 
         use Token::*;
         match &token {
@@ -120,7 +130,7 @@ impl<'input> Parser<'input> {
     }
 
     fn parse_parenthesis_expression(&mut self) -> Result<Box<ExpressionNode>, ParserError> {
-        let expr = self.parse_expression()?;
+        let expr = self.parse_expression(None)?;
 
         let token = self.lexer.next()?;
         if token == Token::ParenthesisEnd {
@@ -131,12 +141,7 @@ impl<'input> Parser<'input> {
     }
 
     fn parse_right_expression(&mut self) -> Result<Option<RightExpressionPart>, ParserError> {
-        let token = self.lexer.next();
-
-        if let Err(LexerError::Eof) = token {
-            return Ok(None);
-        }
-        let token = token?;
+        let token = self.lexer.next()?;
 
         use Token::*;
         match token {
@@ -148,7 +153,7 @@ impl<'input> Parser<'input> {
                 }?;
                 Ok(Some(RightExpressionPart::Arithmetic((
                     op,
-                    self.parse_expression()?,
+                    self.parse_expression(None)?,
                 ))))
             }
             And | Or => {
@@ -159,7 +164,7 @@ impl<'input> Parser<'input> {
                 }?;
                 Ok(Some(RightExpressionPart::Logic((
                     op,
-                    self.parse_expression()?,
+                    self.parse_expression(None)?,
                 ))))
             }
             Equal | NotEqual | Less | LessEqual | Greater | GreaterEqual => {
@@ -174,7 +179,7 @@ impl<'input> Parser<'input> {
                 }?;
                 Ok(Some(RightExpressionPart::Compare((
                     op,
-                    self.parse_expression()?,
+                    self.parse_expression(None)?,
                 ))))
             }
             Question => Ok(Some(RightExpressionPart::TernaryOperator(
@@ -234,14 +239,14 @@ impl<'input> Parser<'input> {
     fn parse_ternary_operator(
         &mut self,
     ) -> Result<(Box<ExpressionNode>, Box<ExpressionNode>), ParserError> {
-        let true_expression = self.parse_expression()?;
+        let true_expression = self.parse_expression(None)?;
 
         let token = self.lexer.next()?;
         if token != Token::Colon {
             return Err(ParserError::Unknown);
         }
 
-        let false_expression = self.parse_expression()?;
+        let false_expression = self.parse_expression(None)?;
 
         Ok((true_expression, false_expression))
     }
@@ -275,7 +280,10 @@ impl<'input> Parser<'input> {
                     Token::Identifier(id) => Box::new(FunctionArgumentNode::Lambda(
                         LambdaNode::NamedLambda(id.to_string()),
                     )),
-                    _ => Box::new(FunctionArgumentNode::Expression(self.parse_expression()?)),
+                    Token::Eof => break,
+                    _ => Box::new(FunctionArgumentNode::Expression(
+                        self.parse_expression(Some(token))?,
+                    )),
                 };
 
                 node.arguments.push(argument);
@@ -287,7 +295,7 @@ impl<'input> Parser<'input> {
     }
 
     fn parse_anonymous_lambda(&mut self) -> Result<Box<ExpressionNode>, ParserError> {
-        let expr = self.parse_expression()?;
+        let expr = self.parse_expression(None)?;
 
         let token = self.lexer.next()?;
         if token == Token::LambdaBracketEnd {
@@ -346,7 +354,7 @@ mod tests {
                 *ast.root.expression,
                 ExpressionNode::FunctionsChain(FunctionsChainNode {
                     data: Box::new(FunctionDataNode::Literal(LiteralNode::String(
-                        "\"qwerty\"".to_string()
+                        "qwerty".to_string()
                     ))),
                     function_calls: vec![FunctionCallNode {
                         name: "drop".to_string(),
