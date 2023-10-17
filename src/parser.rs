@@ -211,9 +211,10 @@ impl<'input> Parser<'input> {
 
             use Token::*;
             let literal = match &token {
-                ArrayBracketBegin | StringLiteral(_) | IntLiteral(_) | BoolLiteral(_) => {
+                ArrayBracketBegin | StringLiteral(_) | CharLiteral(_) | IntLiteral(_) | BoolLiteral(_) => {
                     Ok(Box::new(self.parse_literal(token.clone())?))
                 }
+                ArrayBracketEnd => return Ok(node),
                 _ => Err(ParserError::Unknown),
             };
 
