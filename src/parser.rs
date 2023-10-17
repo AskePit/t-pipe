@@ -321,6 +321,29 @@ mod tests {
     }
 
     #[test]
+    fn serde() {
+        let ast = parse("[16, \"azaz\", false, []]");
+        let mut s = serde_json::to_string_pretty(&ast.root).unwrap();
+
+        /*
+        s = s.replace(":", "");
+        s = s.replace("{", "");
+        s = s.replace("},", "");
+        s = s.replace("}", "");
+        s = s.replace("\"", "");
+
+        let s = s
+            .split("\n\n")
+            .map(|x| x.trim())
+            .filter(|x| !x.is_empty())
+            .collect::<Vec<_>>()
+            .join("\n");
+        */
+
+        println!("{}", s);
+    }
+
+    #[test]
     fn parse_the_simplest() {
         {
             let ast = parse("2");
