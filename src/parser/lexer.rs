@@ -259,6 +259,16 @@ mod tests {
     use super::*;
 
     #[test]
+    fn parse_x() {
+        let code = "x";
+        let mut lexer = Lexer::new(code);
+
+        let token = lexer.next().unwrap();
+
+        assert_eq!(token, Token::XValue);
+    }
+
+    #[test]
     fn parse_primitives() {
         let code = " }[| >=<<=!=?,   ";
         let mut lexer = Lexer::new(code);
