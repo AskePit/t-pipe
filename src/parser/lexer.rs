@@ -275,7 +275,7 @@ mod tests {
         assert!(!lexer.is_eof());
         let last = lexer.next();
         assert!(lexer.is_eof());
-        assert_eq!(last, Err(LexerError::Eof));
+        assert_eq!(last, Ok(Token::Eof));
         assert!(lexer.is_eof());
     }
 
@@ -294,7 +294,7 @@ mod tests {
         assert_eq!(lexer.next(), Ok(Token::LambdaBracketEnd));
 
         let last = lexer.next();
-        assert_eq!(last, Err(LexerError::Eof));
+        assert_eq!(last, Ok(Token::Eof));
         assert!(lexer.is_eof());
     }
 
@@ -331,7 +331,7 @@ mod tests {
             lexer.next(),
             Ok(Token::StringLiteral("\";s;q\"".to_string()))
         );
-        assert_eq!(lexer.next(), Err(LexerError::Eof));
+        assert_eq!(lexer.next(), Ok(Token::Eof));
     }
 
     #[test]

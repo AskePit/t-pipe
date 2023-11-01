@@ -211,9 +211,8 @@ impl<'input> Parser<'input> {
 
             use Token::*;
             let literal = match &token {
-                ArrayBracketBegin | StringLiteral(_) | CharLiteral(_) | IntLiteral(_) | BoolLiteral(_) => {
-                    Ok(Box::new(self.parse_literal(token.clone())?))
-                }
+                ArrayBracketBegin | StringLiteral(_) | CharLiteral(_) | IntLiteral(_)
+                | BoolLiteral(_) => Ok(Box::new(self.parse_literal(token.clone())?)),
                 ArrayBracketEnd => return Ok(node),
                 _ => Err(ParserError::Unknown),
             };
@@ -318,29 +317,6 @@ mod tests {
         assert!(ast.is_ok());
 
         ast.unwrap()
-    }
-
-    #[test]
-    fn serde() {
-        let ast = parse("[16, \"azaz\", false, []]");
-        let mut s = serde_json::to_string_pretty(&ast.root).unwrap();
-
-        /*
-        s = s.replace(":", "");
-        s = s.replace("{", "");
-        s = s.replace("},", "");
-        s = s.replace("}", "");
-        s = s.replace("\"", "");
-
-        let s = s
-            .split("\n\n")
-            .map(|x| x.trim())
-            .filter(|x| !x.is_empty())
-            .collect::<Vec<_>>()
-            .join("\n");
-        */
-
-        println!("{}", s);
     }
 
     #[test]
