@@ -4,7 +4,7 @@ mod ast;
 mod lexer;
 
 use crate::parser::ast::{
-    ArithmeticExpressionNode, ArithmeticOperationNode, ArrayNode, AstRootNode,
+    ArithmeticExpressionNode, ArithmeticOperationNode, AstRootNode,
     CompareExpressionNode, CompareOperationNode, ExpressionNode, FunctionArgumentNode,
     FunctionCallNode, FunctionDataNode, FunctionsChainNode, LambdaNode, LiteralNode,
     LogicExpressionNode, LogicOperationNode, RightExpressionPart, TernaryOperatorNode,
@@ -198,13 +198,13 @@ impl<'input> Parser<'input> {
             Token::CharLiteral(c) => Ok(LiteralNode::Char(c)),
             Token::IntLiteral(i) => Ok(LiteralNode::Int(i)),
             Token::BoolLiteral(b) => Ok(LiteralNode::Bool(b)),
-            Token::ArrayBracketBegin => Ok(LiteralNode::Array(self.parse_array()?)),
+            Token::ArrayBracketBegin => Ok(LiteralNode::Array{array: self.parse_array()?}),
             _ => Err(ParserError::Unknown),
         }
     }
 
-    fn parse_array(&mut self) -> Result<ArrayNode, ParserError> {
-        let mut node = ArrayNode { array: vec![] };
+    fn parse_array(&mut self) -> Result<Vec<Box<LiteralNode>>, ParserError> {
+        let mut node = vec![];
 
         loop {
             let token = self.lexer.next()?;
@@ -218,7 +218,7 @@ impl<'input> Parser<'input> {
             };
 
             if let Ok(l) = literal {
-                node.array.push(l);
+                node.push(l);
             } else {
                 break;
             }
