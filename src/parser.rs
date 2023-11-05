@@ -4,10 +4,10 @@ mod ast;
 mod lexer;
 
 use crate::parser::ast::{
-    ArithmeticExpressionNode, ArithmeticOperationNode, AstRootNode,
-    CompareExpressionNode, CompareOperationNode, ExpressionNode, FunctionArgumentNode,
-    FunctionCallNode, FunctionDataNode, FunctionsChainNode, LambdaNode, LiteralNode,
-    LogicExpressionNode, LogicOperationNode, RightExpressionPart, TernaryOperatorNode,
+    ArithmeticExpressionNode, ArithmeticOperationNode, AstRootNode, CompareExpressionNode,
+    CompareOperationNode, ExpressionNode, FunctionArgumentNode, FunctionCallNode, FunctionDataNode,
+    FunctionsChainNode, LambdaNode, LiteralNode, LogicExpressionNode, LogicOperationNode,
+    RightExpressionPart, TernaryOperatorNode,
 };
 use crate::parser::lexer::{LexerError, Token};
 use ast::Ast;
@@ -120,9 +120,10 @@ impl<'input> Parser<'input> {
 
         use Token::*;
         match &token {
-            ArrayBracketBegin | StringLiteral(_) | IntLiteral(_) | BoolLiteral(_) => Ok(Box::new(
-                ExpressionNode::Literal(self.parse_literal(token)?),
-            )),
+            ArrayBracketBegin | StringLiteral(_) | CharLiteral(_) | IntLiteral(_)
+            | BoolLiteral(_) => Ok(Box::new(ExpressionNode::Literal(
+                self.parse_literal(token)?,
+            ))),
             XValue => Ok(Box::new(ExpressionNode::XValue)),
             ParenthesisBegin => self.parse_parenthesis_expression(),
             _ => Err(ParserError::Unknown),
@@ -198,7 +199,9 @@ impl<'input> Parser<'input> {
             Token::CharLiteral(c) => Ok(LiteralNode::Char(c)),
             Token::IntLiteral(i) => Ok(LiteralNode::Int(i)),
             Token::BoolLiteral(b) => Ok(LiteralNode::Bool(b)),
-            Token::ArrayBracketBegin => Ok(LiteralNode::Array{array: self.parse_array()?}),
+            Token::ArrayBracketBegin => Ok(LiteralNode::Array {
+                array: self.parse_array()?,
+            }),
             _ => Err(ParserError::Unknown),
         }
     }
@@ -309,6 +312,9 @@ impl<'input> Parser<'input> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parser::ast::format_ast_short;
+    use std::fs::File;
+    use std::io::Read;
 
     fn parse(code: &str) -> Ast {
         let mut parser = Parser::new(code);
@@ -316,54 +322,81 @@ mod tests {
         let ast = parser.parse();
         assert!(ast.is_ok());
 
-        ast.unwrap()
+        let ast = ast.unwrap();
+        ast
     }
 
     #[test]
     fn parse_the_simplest() {
         {
             let ast = parse("2");
-            assert_eq!(
-                *ast.root.expression,
-                ExpressionNode::Literal(LiteralNode::Int(2))
-            );
+            assert_eq!(format_ast_short(&ast), "Literal(2)");
         }
         {
             let ast = parse("\"1561\"");
-            assert_eq!(
-                *ast.root.expression,
-                ExpressionNode::Literal(LiteralNode::String("1561".to_string()))
-            );
+            assert_eq!(format_ast_short(&ast), r#"Literal("1561")"#);
         }
         {
             let ast = parse(r#" x + "th" "#);
             assert_eq!(
-                *ast.root.expression,
-                ExpressionNode::ArithmeticExpression(ArithmeticExpressionNode {
-                    l_expression: Box::new(ExpressionNode::XValue),
-                    operation: ArithmeticOperationNode::Plus,
-                    r_expression: Box::new(ExpressionNode::Literal(LiteralNode::String(
-                        "th".to_string()
-                    ))),
-                })
+                format_ast_short(&ast),
+                r#"
+ArithmeticExpression
+    Expression
+        XValue
+    +
+    Expression
+        Literal("th")
+                "#
+                .trim()
+                .replace("    ", "\t")
             );
         }
         {
-            let ast = parse("\"qwerty\" | drop 2");
+            let ast = parse(r#""qwerty" | drop 2"#);
             assert_eq!(
-                *ast.root.expression,
-                ExpressionNode::FunctionsChain(FunctionsChainNode {
-                    data: Box::new(FunctionDataNode::Literal(LiteralNode::String(
-                        "qwerty".to_string()
-                    ))),
-                    function_calls: vec![FunctionCallNode {
-                        name: "drop".to_string(),
-                        arguments: vec![Box::new(FunctionArgumentNode::Expression(Box::new(
-                            ExpressionNode::Literal(LiteralNode::Int(2))
-                        )))],
-                    }],
-                })
+                format_ast_short(&ast),
+                r#"
+FunctionsChain
+    FunctionData
+        Literal("qwerty")
+    FunctionCall
+        "drop"
+        FunctionArgument
+            Expression
+                Literal(2)
+                "#
+                .trim()
+                .replace("    ", "\t")
             );
+        }
+    }
+
+    #[test]
+    fn parse_from_file() {
+        let mut file = File::open("src/parser/tests/ast/ast01.txt").unwrap();
+        let mut contents = String::new();
+        let _ = file.read_to_string(&mut contents);
+
+        let splitted = contents
+            .split("---")
+            .map(str::trim)
+            .filter(|x| x.len() > 0)
+            .collect::<Vec<_>>();
+
+        assert_eq!(splitted.len() % 2, 0);
+
+        for i in (0..splitted.len() / 2).step_by(2) {
+            let code = splitted[i];
+            println!("{}", code);
+            let ast = parse(code);
+
+            let ast_str_expected = splitted[i + 1].replace("\r\n", "\n");
+            let ast_str_real = format_ast_short(&ast);
+
+            assert_eq!(ast_str_real, ast_str_expected);
+
+            println!("ok");
         }
     }
 }

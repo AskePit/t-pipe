@@ -1,0 +1,185 @@
+"qwerty" | drop 2
+---
+FunctionsChain
+	FunctionData
+		Literal("qwerty")
+	FunctionCall
+		"drop"
+		FunctionArgument
+			Expression
+				Literal(2)
+---
+"qwerty" | replace 'y' 'z'
+---
+FunctionsChain
+	FunctionData
+		Literal("qwerty")
+	FunctionCall
+		"replace"
+		FunctionArgument
+			Expression
+				Literal('y')
+			Expression
+				Literal('z')
+---
+"qwerty" | map {(x = 'y') ? 'z' : x}
+---
+FunctionsChain
+	FunctionData
+		Literal("qwerty")
+	FunctionCall
+		"map"
+		FunctionArgument
+			Lambda
+				Expression
+					TernaryOperator
+						Expression
+							CompareExpression
+								Expression
+									XValue
+								=
+								Expression
+									Literal('y')
+						Expression
+							Literal('z')
+						Expression
+							XValue
+---
+"xxxFnx" | filter {'x'} | len
+---
+FunctionsChain
+	FunctionData
+		Literal("xxxFnx")
+	FunctionCall
+		"filter"
+		FunctionArgument
+			Lambda
+				Expression
+					Literal('x')
+			Expression
+				Literal('z')
+	FunctionCall
+		"len"
+---
+"15 dogs"
+	| split ' '
+	| nth_map 0 { x + "th" }
+	| nth_map 1 { x | drop -1 }
+	| reverse
+	| join " the "
+---
+FunctionsChain
+	FunctionData
+		Literal("15 dogs")
+	FunctionCall
+		"split"
+		FunctionArgument
+			Expression
+				Literal(' ')
+	FunctionCall
+		"nth_map"
+		FunctionArgument
+			Expression
+				Literal(0)
+		FunctionArgument
+			Lambda
+				Expression
+					ArithmeticExpression
+						Expression
+							XValue
+						+
+						Expression
+							Literal("th")
+	FunctionCall
+		"nth_map"
+		FunctionArgument
+			Expression
+				Literal(1)
+		FunctionArgument
+			Lambda
+				Expression
+					FunctionsChain
+						FunctionData
+							XValue
+				FunctionCall
+					"drop"
+					Expression
+						Literal(-1)
+	FunctionCall
+		"reverse"
+	FunctionCall
+		"join"
+		FunctionArgument
+			Expression
+				Literal(" the ")
+---
+"AaaaaaaaBbbbbCccAaaaaaDd"
+	| map lower
+	| chunk_by eq
+	| filter {(x | len) > 3}
+	| map {x | get 0}
+	| collect
+	| len
+---
+FunctionsChain
+	FunctionData
+		Literal("AaaaaaaaBbbbbCccAaaaaaDd")
+	FunctionCall
+		"map"
+		FunctionArgument
+			Lambda
+				"lower"
+	FunctionCall
+		"chunk_by"
+		FunctionArgument
+			Lambda
+				"eq"
+	FunctionCall
+		"filter"
+		FunctionArgument
+			Lambda
+				Expression
+					CompareExpression
+						Expression
+							FunctionsChain
+								FunctionData
+									XValue
+								FunctionCall
+									"len"
+						>
+						Expression
+							Literal(3)
+	FunctionCall
+		"map"
+		FunctionArgument
+			Lambda
+				Expression
+					FunctionsChain
+						FunctionData
+							XValue
+						FunctionCall
+							"get"
+							FunctionArgument
+								Expression
+									Literal(3)
+	FunctionCall
+		"collect"
+	FunctionCall
+		"len"
+---
+"mean" | filter { x != 'e' }
+---
+FunctionsChain
+	FunctionData
+		Literal("mean")
+	FunctionCall
+		"filter"
+		FunctionArgument
+			Lambda
+				Expression
+					CompareExpression
+						Expression
+							XValue
+						!=
+						Expression
+							Literal('e')
