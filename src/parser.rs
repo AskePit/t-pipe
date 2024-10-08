@@ -52,8 +52,10 @@ impl<'input> Parser<'input> {
         &mut self,
         first_token: Option<Token>,
     ) -> Result<Box<ExpressionNode>, ParserError> {
+        let has_first_token = first_token.is_some();
+
         let left = self.parse_left_expression(first_token)?;
-        let right = self.parse_right_expression()?;
+        let right = self.parse_right_expression(has_first_token)?;
 
         if let Some(r) = right {
             use RightExpressionPart::*;
@@ -126,6 +128,9 @@ impl<'input> Parser<'input> {
             ))),
             XValue => Ok(Box::new(ExpressionNode::XValue)),
             ParenthesisBegin => self.parse_parenthesis_expression(),
+            Minus => Ok(Box::new(ExpressionNode::Negation(
+                self.parse_expression(None)?,
+            ))),
             _ => Err(ParserError::Unknown),
         }
     }
@@ -141,7 +146,10 @@ impl<'input> Parser<'input> {
         }
     }
 
-    fn parse_right_expression(&mut self) -> Result<Option<RightExpressionPart>, ParserError> {
+    fn parse_right_expression(
+        &mut self,
+        without_function_chain: bool,
+    ) -> Result<Option<RightExpressionPart>, ParserError> {
         let token = self.lexer.next()?;
 
         use Token::*;
@@ -186,10 +194,18 @@ impl<'input> Parser<'input> {
             Question => Ok(Some(RightExpressionPart::TernaryOperator(
                 self.parse_ternary_operator()?,
             ))),
-            Pipe => Ok(Some(RightExpressionPart::FunctionsChain(
-                self.parse_functions_chain()?,
-            ))),
-            _ => Ok(None),
+            Pipe => Ok(if without_function_chain {
+                self.lexer.undo();
+                None
+            } else {
+                Some(RightExpressionPart::FunctionsChain(
+                    self.parse_functions_chain()?,
+                ))
+            }),
+            _ => {
+                self.lexer.undo();
+                Ok(None)
+            }
         }
     }
 
@@ -266,7 +282,10 @@ impl<'input> Parser<'input> {
             let token = self.lexer.next()?;
             match &token {
                 Token::Identifier(name) => node.name = name.to_string(),
-                _ => break,
+                _ => {
+                    self.lexer.undo();
+                    break;
+                }
             };
 
             loop {
@@ -284,6 +303,10 @@ impl<'input> Parser<'input> {
                         FunctionArgumentNode::Lambda(LambdaNode::NamedLambda(id.to_string()))
                     }
                     Token::Eof => break,
+                    Token::LambdaBracketEnd => {
+                        self.lexer.undo();
+                        break;
+                    }
                     _ => FunctionArgumentNode::Expression(self.parse_expression(Some(token))?),
                 };
 
@@ -318,6 +341,11 @@ mod tests {
         let mut parser = Parser::new(code);
 
         let ast = parser.parse();
+
+        if let Err(e) = &ast {
+            println!("Parser error is: {:?}", e);
+        }
+
         assert!(ast.is_ok());
 
         let ast = ast.unwrap();
@@ -384,7 +412,7 @@ FunctionsChain
 
         assert_eq!(splitted.len() % 2, 0);
 
-        for i in (0..splitted.len() / 2).step_by(2) {
+        for i in (0..splitted.len()).step_by(2) {
             let code = splitted[i];
             println!("{}", code);
             let ast = parse(code);

@@ -70,7 +70,11 @@ impl<'input> Lexer<'input> {
         }
     }
 
-    pub fn next_impl(&mut self) -> Result<Token, LexerError> {
+    pub fn undo(&mut self) {
+        self.load()
+    }
+
+    fn next_impl(&mut self) -> Result<Token, LexerError> {
         self.eat_space();
         self.save();
 
@@ -246,7 +250,7 @@ impl<'input> Lexer<'input> {
     }
 
     fn parse_int_literal(&mut self) -> Result<i32, LexerError> {
-        // parsing starts from the char after `'`.
+        // parsing starts from the second char
         self.eat_all(|c| c.is_numeric());
 
         let str_int = self.get_stashed_string();

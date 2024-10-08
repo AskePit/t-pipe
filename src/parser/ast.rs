@@ -23,6 +23,7 @@ pub enum ExpressionNode {
     Literal(LiteralNode),
     XValue,
     FunctionsChain(FunctionsChainNode),
+    Negation(Box<ExpressionNode>),
     ArithmeticExpression(ArithmeticExpressionNode),
     LogicExpression(LogicExpressionNode),
     CompareExpression(CompareExpressionNode),
@@ -35,6 +36,18 @@ impl AstDisplay for ExpressionNode {
             ExpressionNode::Literal(l) => l.get_display_info(),
             ExpressionNode::XValue => (vec!["XValue".into()], vec![0]),
             ExpressionNode::FunctionsChain(ch) => ch.get_display_info(),
+            ExpressionNode::Negation(e) => {
+                let mut info = e.get_display_info();
+
+                for l in &mut info.1 {
+                    *l += 1;
+                }
+
+                info.0.insert(0, "Negation".to_string());
+                info.1.insert(0, 0);
+
+                info
+            },
             ExpressionNode::ArithmeticExpression(e) => e.get_display_info(),
             ExpressionNode::LogicExpression(e) => e.get_display_info(),
             ExpressionNode::CompareExpression(e) => e.get_display_info(),

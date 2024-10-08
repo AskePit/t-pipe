@@ -100,10 +100,13 @@ FunctionsChain
 					FunctionsChain
 						FunctionData
 							XValue
-                        FunctionCall
-                            "drop"
-                            Expression
-                                Literal(-1)
+						FunctionCall
+							"drop"
+							FunctionArgument
+								Expression
+									Negation
+										Expression
+											Literal(1)
 	FunctionCall
 		"reverse"
 	FunctionCall
