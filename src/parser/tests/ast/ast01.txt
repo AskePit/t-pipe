@@ -19,6 +19,7 @@ FunctionsChain
 		FunctionArgument
 			Expression
 				Literal('y')
+		FunctionArgument
 			Expression
 				Literal('z')
 ---
@@ -56,8 +57,6 @@ FunctionsChain
 			Lambda
 				Expression
 					Literal('x')
-			Expression
-				Literal('z')
 	FunctionCall
 		"len"
 ---
@@ -101,10 +100,10 @@ FunctionsChain
 					FunctionsChain
 						FunctionData
 							XValue
-				FunctionCall
-					"drop"
-					Expression
-						Literal(-1)
+                        FunctionCall
+                            "drop"
+                            Expression
+                                Literal(-1)
 	FunctionCall
 		"reverse"
 	FunctionCall
@@ -161,7 +160,7 @@ FunctionsChain
 							"get"
 							FunctionArgument
 								Expression
-									Literal(3)
+									Literal(0)
 	FunctionCall
 		"collect"
 	FunctionCall
