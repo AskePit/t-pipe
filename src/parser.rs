@@ -206,7 +206,7 @@ impl<'input> Parser<'input> {
         }
     }
 
-    fn parse_array(&mut self) -> Result<Vec<Box<LiteralNode>>, ParserError> {
+    fn parse_array(&mut self) -> Result<Vec<LiteralNode>, ParserError> {
         let mut node = vec![];
 
         loop {
@@ -215,7 +215,7 @@ impl<'input> Parser<'input> {
             use Token::*;
             let literal = match &token {
                 ArrayBracketBegin | StringLiteral(_) | CharLiteral(_) | IntLiteral(_)
-                | BoolLiteral(_) => Ok(Box::new(self.parse_literal(token.clone())?)),
+                | BoolLiteral(_) => Ok(self.parse_literal(token.clone())?),
                 ArrayBracketEnd => return Ok(node),
                 _ => Err(ParserError::Unknown),
             };
@@ -277,16 +277,14 @@ impl<'input> Parser<'input> {
                 }
 
                 let argument = match token {
-                    Token::LambdaBracketBegin => Box::new(FunctionArgumentNode::Lambda(
+                    Token::LambdaBracketBegin => FunctionArgumentNode::Lambda(
                         LambdaNode::AnonymousLambda(self.parse_anonymous_lambda()?),
-                    )),
-                    Token::Identifier(id) => Box::new(FunctionArgumentNode::Lambda(
-                        LambdaNode::NamedLambda(id.to_string()),
-                    )),
+                    ),
+                    Token::Identifier(id) => {
+                        FunctionArgumentNode::Lambda(LambdaNode::NamedLambda(id.to_string()))
+                    }
                     Token::Eof => break,
-                    _ => Box::new(FunctionArgumentNode::Expression(
-                        self.parse_expression(Some(token))?,
-                    )),
+                    _ => FunctionArgumentNode::Expression(self.parse_expression(Some(token))?),
                 };
 
                 node.arguments.push(argument);

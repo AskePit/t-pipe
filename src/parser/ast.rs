@@ -58,7 +58,7 @@ pub enum LiteralNode {
     Char(char),
     Int(i32),
     Bool(bool),
-    Array { array: Vec<Box<LiteralNode>> },
+    Array { array: Vec<LiteralNode> },
 }
 
 impl AstDisplay for LiteralNode {
@@ -123,7 +123,7 @@ impl AstDisplay for FunctionDataNode {
 #[derive(PartialEq, Debug)]
 pub struct FunctionCallNode {
     pub name: String,
-    pub arguments: Vec<Box<FunctionArgumentNode>>,
+    pub arguments: Vec<FunctionArgumentNode>,
 }
 
 impl AstDisplay for FunctionCallNode {
@@ -328,7 +328,7 @@ pub trait AstDisplay {
 
         let mut children_data = self.get_children_display_info();
 
-        if children_data.0.len() > 0 {
+        if !children_data.0.is_empty() {
             children_data.1.iter_mut().for_each(|x| *x += 1);
             lines.append(&mut children_data.0);
             levels.append(&mut children_data.1);
@@ -373,7 +373,7 @@ pub fn format_ast(node: &impl AstDisplay) -> String {
 pub fn format_ast_short(node: &impl AstDisplay) -> String {
     let (mut lines, mut levels) = node.get_display_info();
 
-    if lines.len() > 0 && lines[0] == "AstRoot" {
+    if !lines.is_empty() && lines[0] == "AstRoot" {
         lines = lines[2..].to_vec();
         levels = levels[2..].to_vec();
         levels.iter_mut().for_each(|x| *x -= 2);
@@ -400,11 +400,11 @@ mod tests {
     fn literal_display() {
         let node = LiteralNode::Array {
             array: vec![
-                Box::new(LiteralNode::String("qwerty".to_string())),
-                Box::new(LiteralNode::Char('4')),
-                Box::new(LiteralNode::Array {
-                    array: vec![Box::new(LiteralNode::Int(4))],
-                }),
+                LiteralNode::String("qwerty".to_string()),
+                LiteralNode::Char('4'),
+                LiteralNode::Array {
+                    array: vec![LiteralNode::Int(4)],
+                },
             ],
         };
         let (lines, levels) = node.get_display_info();

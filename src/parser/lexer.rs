@@ -120,8 +120,8 @@ impl<'input> Lexer<'input> {
                 }
                 Err(_) => Ok(Token::Greater),
             },
-            '\"' => self.parse_string_literal().map(|x| Token::StringLiteral(x)),
-            '\'' => self.parse_char_literal().map(|x| Token::CharLiteral(x)),
+            '\"' => self.parse_string_literal().map(Token::StringLiteral),
+            '\'' => self.parse_char_literal().map(Token::CharLiteral),
             c => {
                 if c.is_alphabetic() || c == '_' {
                     let id = self.parse_identifier()?;
@@ -134,7 +134,7 @@ impl<'input> Lexer<'input> {
                         _ => Ok(Token::Identifier(id)),
                     }
                 } else if c.is_numeric() {
-                    self.parse_int_literal().map(|x| Token::IntLiteral(x))
+                    self.parse_int_literal().map(Token::IntLiteral)
                 } else {
                     Err(LexerError::Unexpected(c))
                 }
@@ -143,7 +143,7 @@ impl<'input> Lexer<'input> {
     }
 
     pub fn is_eof(&self) -> bool {
-        self.rest.len() <= 0
+        self.rest.is_empty()
     }
 
     fn get_curr(&self) -> Result<char, LexerError> {
@@ -250,7 +250,7 @@ impl<'input> Lexer<'input> {
         self.eat_all(|c| c.is_numeric());
 
         let str_int = self.get_stashed_string();
-        return Ok(str_int.parse::<i32>().unwrap());
+        Ok(str_int.parse::<i32>().unwrap())
     }
 }
 
