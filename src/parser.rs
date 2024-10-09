@@ -4,10 +4,10 @@ mod ast;
 mod lexer;
 
 use crate::parser::ast::{
-    ArithmeticExpressionNode, ArithmeticOperationNode, AstRootNode, CompareExpressionNode,
-    CompareOperationNode, ExpressionNode, FunctionArgumentNode, FunctionCallNode, FunctionDataNode,
-    FunctionsChainNode, LambdaNode, LiteralNode, LogicExpressionNode, LogicOperationNode,
-    RightExpressionPart, TernaryOperatorNode,
+    format_ast_short, ArithmeticExpressionNode, ArithmeticOperationNode, AstRootNode,
+    CompareExpressionNode, CompareOperationNode, ExpressionNode, FunctionArgumentNode,
+    FunctionCallNode, FunctionDataNode, FunctionsChainNode, LambdaNode, LiteralNode,
+    LogicExpressionNode, LogicOperationNode, RightExpressionPart, TernaryOperatorNode,
 };
 use crate::parser::lexer::{LexerError, Token};
 use ast::Ast;
@@ -16,6 +16,7 @@ use lexer::Lexer;
 #[derive(Debug)]
 pub enum ParserError {
     LexerError(LexerError),
+    Unexpected(String),
     Unknown,
 }
 
@@ -94,7 +95,10 @@ impl<'input> Parser<'input> {
                             Ok(Box::new(FunctionDataNode::Literal(literal)))
                         }
                         ExpressionNode::XValue => Ok(Box::new(FunctionDataNode::XValue)),
-                        _ => Err(ParserError::Unknown),
+                        c => Err(ParserError::Unexpected(format!(
+                            "Expected data for a functions chain, got {}",
+                            format_ast_short(&c)
+                        ))),
                     }?;
 
                     Ok(Box::new(ExpressionNode::FunctionsChain(
@@ -131,7 +135,10 @@ impl<'input> Parser<'input> {
             Minus => Ok(Box::new(ExpressionNode::Negation(
                 self.parse_expression(None)?,
             ))),
-            _ => Err(ParserError::Unknown),
+            t => Err(ParserError::Unexpected(format!(
+                "Expected expression beginning, got {}",
+                t
+            ))),
         }
     }
 
@@ -142,7 +149,10 @@ impl<'input> Parser<'input> {
         if token == Token::ParenthesisEnd {
             Ok(expr)
         } else {
-            Err(ParserError::Unknown)
+            Err(ParserError::Unexpected(format!(
+                "Expected ')', got {}",
+                token
+            )))
         }
     }
 
@@ -156,10 +166,10 @@ impl<'input> Parser<'input> {
         match token {
             Plus | Minus => {
                 let op = match token {
-                    Plus => Ok(ArithmeticOperationNode::Plus),
-                    Minus => Ok(ArithmeticOperationNode::Minus),
-                    _ => Err(ParserError::Unknown),
-                }?;
+                    Plus => ArithmeticOperationNode::Plus,
+                    Minus => ArithmeticOperationNode::Minus,
+                    _ => unreachable!(),
+                };
                 Ok(Some(RightExpressionPart::Arithmetic((
                     op,
                     self.parse_expression(None)?,
@@ -167,10 +177,10 @@ impl<'input> Parser<'input> {
             }
             And | Or => {
                 let op = match token {
-                    And => Ok(LogicOperationNode::And),
-                    Or => Ok(LogicOperationNode::Or),
-                    _ => Err(ParserError::Unknown),
-                }?;
+                    And => LogicOperationNode::And,
+                    Or => LogicOperationNode::Or,
+                    _ => unreachable!(),
+                };
                 Ok(Some(RightExpressionPart::Logic((
                     op,
                     self.parse_expression(None)?,
@@ -178,14 +188,14 @@ impl<'input> Parser<'input> {
             }
             Equal | NotEqual | Less | LessEqual | Greater | GreaterEqual => {
                 let op = match token {
-                    Equal => Ok(CompareOperationNode::Eq),
-                    NotEqual => Ok(CompareOperationNode::Neq),
-                    Less => Ok(CompareOperationNode::Lt),
-                    LessEqual => Ok(CompareOperationNode::Le),
-                    Greater => Ok(CompareOperationNode::Gt),
-                    GreaterEqual => Ok(CompareOperationNode::Ge),
-                    _ => Err(ParserError::Unknown),
-                }?;
+                    Equal => CompareOperationNode::Eq,
+                    NotEqual => CompareOperationNode::Neq,
+                    Less => CompareOperationNode::Lt,
+                    LessEqual => CompareOperationNode::Le,
+                    Greater => CompareOperationNode::Gt,
+                    GreaterEqual => CompareOperationNode::Ge,
+                    _ => unreachable!(),
+                };
                 Ok(Some(RightExpressionPart::Compare((
                     op,
                     self.parse_expression(None)?,
@@ -218,7 +228,7 @@ impl<'input> Parser<'input> {
             Token::ArrayBracketBegin => Ok(LiteralNode::Array {
                 array: self.parse_array()?,
             }),
-            _ => Err(ParserError::Unknown),
+            _ => unreachable!(),
         }
     }
 
@@ -233,7 +243,10 @@ impl<'input> Parser<'input> {
                 ArrayBracketBegin | StringLiteral(_) | CharLiteral(_) | IntLiteral(_)
                 | BoolLiteral(_) => Ok(self.parse_literal(token.clone())?),
                 ArrayBracketEnd => return Ok(node),
-                _ => Err(ParserError::Unknown),
+                _ => Err(ParserError::Unexpected(format!(
+                    "Expected array continuation, got {}",
+                    token
+                ))),
             };
 
             if let Ok(l) = literal {
@@ -249,7 +262,10 @@ impl<'input> Parser<'input> {
             }
 
             if token != Comma {
-                return Err(ParserError::Unknown);
+                return Err(ParserError::Unexpected(format!(
+                    "Expected ',', got {}",
+                    token
+                )));
             }
         }
         Ok(node)
@@ -262,7 +278,10 @@ impl<'input> Parser<'input> {
 
         let token = self.lexer.next()?;
         if token != Token::Colon {
-            return Err(ParserError::Unknown);
+            return Err(ParserError::Unexpected(format!(
+                "Expected ':', got {}",
+                token
+            )));
         }
 
         let false_expression = self.parse_expression(None)?;
@@ -325,7 +344,10 @@ impl<'input> Parser<'input> {
         if token == Token::LambdaBracketEnd {
             Ok(expr)
         } else {
-            Err(ParserError::Unknown)
+            return Err(ParserError::Unexpected(format!(
+                "Expected '}}', got {}",
+                token
+            )));
         }
     }
 }

@@ -47,7 +47,7 @@ impl AstDisplay for ExpressionNode {
                 info.1.insert(0, 0);
 
                 info
-            },
+            }
             ExpressionNode::ArithmeticExpression(e) => e.get_display_info(),
             ExpressionNode::LogicExpression(e) => e.get_display_info(),
             ExpressionNode::CompareExpression(e) => e.get_display_info(),

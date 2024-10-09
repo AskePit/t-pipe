@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use std::fmt::{Display, Formatter};
 use std::rc::Rc;
 use unescaper::Unescaper;
 
@@ -32,6 +33,40 @@ pub enum Token {
     Colon,              // :
     Comma,              // ,
     Eof,
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::Identifier(id) => write!(f, "{}", id),
+            Token::StringLiteral(s) => write!(f, "{}", s),
+            Token::CharLiteral(c) => write!(f, "{}", c),
+            Token::IntLiteral(val) => write!(f, "{}", val.to_string()),
+            Token::BoolLiteral(val) => write!(f, "{}", val.to_string()),
+            Token::XValue => write!(f, "x"),
+            Token::ArrayBracketBegin => write!(f, "["),
+            Token::ArrayBracketEnd => write!(f, "]"),
+            Token::LambdaBracketBegin => write!(f, "{{"),
+            Token::LambdaBracketEnd => write!(f, "}}"),
+            Token::ParenthesisBegin => write!(f, "("),
+            Token::ParenthesisEnd => write!(f, ")"),
+            Token::Plus => write!(f, "+"),
+            Token::Minus => write!(f, "-"),
+            Token::Equal => write!(f, "="),
+            Token::NotEqual => write!(f, "!="),
+            Token::Less => write!(f, "<"),
+            Token::LessEqual => write!(f, "<="),
+            Token::Greater => write!(f, ">"),
+            Token::GreaterEqual => write!(f, ">="),
+            Token::And => write!(f, "and"),
+            Token::Or => write!(f, "or"),
+            Token::Pipe => write!(f, "|"),
+            Token::Question => write!(f, "?"),
+            Token::Colon => write!(f, ":"),
+            Token::Comma => write!(f, ","),
+            Token::Eof => write!(f, "EOF"),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
