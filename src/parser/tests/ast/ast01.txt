@@ -185,3 +185,31 @@ FunctionsChain
 						!=
 						Expression
 							Literal('e')
+---
+['a', 'C', '?']
+---
+Array
+	Literal('a')
+	Literal('C')
+	Literal('?')
+---
+['a', 'C', '?']|collect|split 'C'|join '/'
+---
+FunctionsChain
+	FunctionData
+		Array
+			Literal('a')
+			Literal('C')
+			Literal('?')
+	FunctionCall
+		"collect"
+	FunctionCall
+		"split"
+		FunctionArgument
+			Expression
+				Literal('C')
+	FunctionCall
+		"join"
+		FunctionArgument
+			Expression
+				Literal('/')

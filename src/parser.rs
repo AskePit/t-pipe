@@ -322,7 +322,7 @@ impl<'input> Parser<'input> {
                         FunctionArgumentNode::Lambda(LambdaNode::NamedLambda(id.to_string()))
                     }
                     Token::Eof => break,
-                    Token::LambdaBracketEnd => {
+                    Token::LambdaBracketEnd | Token::ParenthesisEnd => {
                         self.lexer.undo();
                         break;
                     }
