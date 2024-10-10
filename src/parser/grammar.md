@@ -112,3 +112,34 @@
 
 - implicit_x_chain:
     - function_call functions_chain_rest_tail
+
+## Expressions precedence
+
+From the highest priority to the lowest:
+
+- Negation
+- Arithmetic Expression
+- Compare Expression
+- Logic Expression
+- Ternary Operator
+- Piping
+
+So, the following code:
+
+```
+2 - 1 < 15 and "foo" != "42" + '4'
+```
+
+equals to 
+
+```
+(2 - (1 < 15)) and ("foo" != ("42" + '4'))
+```
+
+and the following code:
+
+```
+2 - 1 < 15 and "foo" != ("42" | filter {'4'}) + '4'
+```
+
+has to have `()` around piping operation `|` since it has the lowest priority of all the expressions.
