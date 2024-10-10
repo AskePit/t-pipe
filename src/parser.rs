@@ -314,19 +314,23 @@ impl<'input> Parser<'input> {
                     break;
                 }
 
+                use Token::*;
                 let argument = match token {
-                    Token::LambdaBracketBegin => FunctionArgumentNode::Lambda(
+                    LambdaBracketBegin => FunctionArgumentNode::Lambda(
                         LambdaNode::AnonymousLambda(self.parse_anonymous_lambda()?),
                     ),
-                    Token::Identifier(id) => {
+                    Identifier(id) => {
                         FunctionArgumentNode::Lambda(LambdaNode::NamedLambda(id.to_string()))
                     }
-                    Token::Eof => break,
-                    Token::LambdaBracketEnd | Token::ParenthesisEnd => {
+                    ArrayBracketBegin | StringLiteral(_) | CharLiteral(_) | IntLiteral(_)
+                    | BoolLiteral(_) | XValue | ParenthesisBegin | Minus => {
+                        FunctionArgumentNode::Expression(self.parse_expression(Some(token))?)
+                    }
+                    Eof => break,
+                    _ => {
                         self.lexer.undo();
                         break;
                     }
-                    _ => FunctionArgumentNode::Expression(self.parse_expression(Some(token))?),
                 };
 
                 node.arguments.push(argument);
@@ -338,7 +342,21 @@ impl<'input> Parser<'input> {
     }
 
     fn parse_anonymous_lambda(&mut self) -> Result<Box<ExpressionNode>, ParserError> {
-        let expr = self.parse_expression(None)?;
+        let token = self.lexer.next()?;
+
+        let expr = if let Token::Identifier(_) = token {
+            // implicit XValue functions chain detected!
+            self.lexer.undo();
+            Box::new(ExpressionNode::FunctionsChain(FunctionsChainNode {
+                data: Box::new(FunctionDataNode::XValue),
+                function_calls: self.parse_functions_chain()?,
+            }))
+        } else {
+            self.lexer.undo();
+            // HACK: Do not pass token! It'll stop full function chaining parsing
+            // TODO: fix that hack inside `parse_expression -> parse_right_expression`
+            self.parse_expression(None)?
+        };
 
         let token = self.lexer.next()?;
         if token == Token::LambdaBracketEnd {

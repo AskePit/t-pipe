@@ -46,6 +46,119 @@ FunctionsChain
 						Expression
 							XValue
 ---
+"qwerty" | map {'y' ? 'z' : x}
+---
+FunctionsChain
+	FunctionData
+		Literal("qwerty")
+	FunctionCall
+		"map"
+		FunctionArgument
+			Lambda
+				Expression
+					TernaryOperator
+						Expression
+							Literal('y')
+						Expression
+							Literal('z')
+						Expression
+							XValue
+---
+((2 - 1) < 15) and ("foo" != ("42" + '4'))
+---
+LogicExpression
+	Expression
+		CompareExpression
+			Expression
+				ArithmeticExpression
+					Expression
+						Literal(2)
+					-
+					Expression
+						Literal(1)
+			<
+			Expression
+				Literal(15)
+	and
+	Expression
+		CompareExpression
+			Expression
+				Literal("foo")
+			!=
+			Expression
+				ArithmeticExpression
+					Expression
+						Literal("42")
+					+
+					Expression
+						Literal('4')
+---
+2 - 1 < 15 and "foo" != "42" + '4'
+---
+LogicExpression
+	Expression
+		CompareExpression
+			Expression
+				ArithmeticExpression
+					Expression
+						Literal(2)
+					-
+					Expression
+						Literal(1)
+			<
+			Expression
+				Literal(15)
+	and
+	Expression
+		CompareExpression
+			Expression
+				Literal("foo")
+			!=
+			Expression
+				ArithmeticExpression
+					Expression
+						Literal("42")
+					+
+					Expression
+						Literal('4')
+---
+2 - 1 < 15 and "foo" != ("42" | filter {'4'}) + '4'
+---
+LogicExpression
+	Expression
+		CompareExpression
+			Expression
+				ArithmeticExpression
+					Expression
+						Literal(2)
+					-
+					Expression
+						Literal(1)
+			<
+			Expression
+				Literal(15)
+	and
+	Expression
+		CompareExpression
+			Expression
+				Literal("foo")
+			!=
+			Expression
+				ArithmeticExpression
+					Expression
+						FunctionsChain
+							FunctionData
+								Literal("42")
+							FunctionCall
+								"filter"
+								FunctionArgument
+									Lambda
+										Expression
+											Literal('4')
+					+
+					Expression
+						Literal('4')
+---
 "xxxFnx" | filter {'x'} | len
 ---
 FunctionsChain
@@ -57,6 +170,25 @@ FunctionsChain
 			Lambda
 				Expression
 					Literal('x')
+	FunctionCall
+		"len"
+---
+"xxxFnx" | filter {x = 'x'} | len
+---
+FunctionsChain
+	FunctionData
+		Literal("xxxFnx")
+	FunctionCall
+		"filter"
+		FunctionArgument
+			Lambda
+				Expression
+					CompareExpression
+						Expression
+							XValue
+						=
+						Expression
+							Literal('x')
 	FunctionCall
 		"len"
 ---
@@ -213,3 +345,52 @@ FunctionsChain
 		FunctionArgument
 			Expression
 				Literal('/')
+---
+["foo", "barr", "sigmoid"] | filter { (x | len) > 3 }
+---
+FunctionsChain
+	FunctionData
+		Array
+			Literal("foo")
+			Literal("barr")
+			Literal("sigmoid")
+	FunctionCall
+		"filter"
+		FunctionArgument
+			Lambda
+				Expression
+					CompareExpression
+						Expression
+							FunctionsChain
+								FunctionData
+									XValue
+								FunctionCall
+									"len"
+						>
+						Expression
+							Literal(3)
+---
+["foo", "barr", "sigmoid"] | filter { len > 3 }
+---
+FunctionsChain
+	FunctionData
+		Array
+			Literal("foo")
+			Literal("barr")
+			Literal("sigmoid")
+	FunctionCall
+		"filter"
+		FunctionArgument
+			Lambda
+				Expression
+					CompareExpression
+						Expression
+							FunctionsChain
+								FunctionData
+									XValue
+								FunctionCall
+									"len"
+						>
+						Expression
+							Literal(3)
+---
