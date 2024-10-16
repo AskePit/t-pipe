@@ -1,117 +1,92 @@
 ## Grammar
 
-- program:
-    - expression
+```
+program -> expression
 
-- expression:
-    - left_expression right_expression
+expression -> primary_expression
+expression -> unary_expression
+expression -> arithmetic_expression
+expression -> compare_expression
+expression -> logic_expression
+expression -> ternary_expression
+expression -> functions_chain
 
-- left_expression:
-    - literal
-    - x_value
-    - **(** expression **)**
+primary_expression -> literal
+primary_expression -> x_value
+primary_expression -> '(' expression ')'
 
-- right_expression:
-    - arithmetic_expression
-    - logic_expression
-    - compare_expression
-    - ternary_operator
-    - functions_chain
-    - **\<EMPTY\>**
+unary_expression -> '-' expression
 
-- x_value: **x**
+x_value -> 'x'
 
-- literal
-    - string: **"qwerty"**
-    - char: **'q'**
-    - int: **12**
-    - bool: **true** | **false**
-    - array
+literal -> <STRING>
+literal -> <CHAR>
+literal -> <NUMBER>
+literal -> <BOOL>
+literal -> array
 
--  array:
-    - **\[**  literal_seq **\]**
+array -> '[' ']'
+array -> '[' literal_seq ']'
 
-- literal_seq:
-    - literal literal_seq_tail
+literal_seq -> literal ',' literal_seq
+literal_seq -> literal
 
-- literal_seq_tail:
-    - **,** literal_seq
-    - **\<EMPTY\>**
+ternary_expression -> compare_expression '?' expression ':' expression
 
-- ternary_operator:
-    - **?** expression **:** expression
+compare_expression -> expression compare_operation expression
+compare_expression -> x_eq_expression
 
-- compare_expression:
-    - normal_compare_expression
-    - x_eq_expression
+compare_operation -> '='
+compare_operation -> '!='
+compare_operation -> '>'
+compare_operation -> '>='
+compare_operation -> '<'
+compare_operation -> '<='
 
-- normal_compare_expression:
-    - compare_operation expression
+x_eq_expression -> literal
+x_eq_expression -> expression
 
-- x_eq_expression:
-    - literal
-    - arithmetic_expression
+logic_expression -> compare_expression logic_operation compare_expression
 
-- compare_operation:
-    - **= != > >= < <=**
+logic_operation -> 'and'
+logic_operation -> 'or'
 
-- logic_expression:
-    - logic_operation compare_expression
+arithmetic_expression -> expression arithmetic_operation expression
 
-- logic_operation:
-    - **and | or**
+arithmetic_operation -> '+'
+arithmetic_operation -> '-'
 
-- arithmetic_expression:
-    - arithmetic_operation expression
+functions_chain -> functions_chain_start functions_chain_rest
 
-- arithmetic_operation:
-    - **+ -**
+functions_chain_start -> literal
+functions_chain_start -> x_value
 
-- functions_chain:
-    - functions_chain_start functions_chain_rest
+functions_chain_rest -> '|' function_call functions_chain_rest
+functions_chain_rest -> '|' function_call
 
-- functions_chain_start:
-    - literal
-    - x_value
+function_call -> function_name function_arguments
 
-- functions_chain_rest:
-    - **|** function_call functions_chain_rest_tail
+function_name -> <ID>
 
-- functions_chain_rest_tail:
-    - functions_chain_rest
-    - **\<EMPTY\>**
+function_arguments -> function_argument function_arguments
+function_arguments -> function_argument
 
-- function_call:
-    - function_name function_arguments
+function_argument -> expression
+function_argument -> lambda
 
-- function_name: **\<ID\>**
+lambda -> named_lambda
+lambda -> anonymous_lambda
 
-- function_arguments:
-    - function_argument function_arguments_tail
+named_lambda -> <ID>
 
-- function_arguments_tail:
-    - **\<SPACE\>** function_argument
-    - **\<EMPTY\>**
+anonymous_lambda -> '{' lambda_expression '}'
 
-- function_argument:
-    - expression
-    - lambda
+lambda_expression -> expression
+lambda_expression -> implicit_x_chain
 
-- lambda:
-    - named_lambda
-    - anonymous_lambda
-
-- named_lambda: **\<ID\>**
-
-- anonymous_lambda:
-    - **{** lambda_expression **}**
-
-- lambda_expression:
-    - expression
-    - implicit_x_chain
-
-- implicit_x_chain:
-    - function_call functions_chain_rest_tail
+implicit_x_chain -> function_call functions_chain_rest
+implicit_x_chain -> function_call
+```
 
 ## Expressions precedence
 
@@ -130,7 +105,7 @@ So, the following code:
 2 - 1 < 15 and "foo" != "42" + '4'
 ```
 
-equals to 
+equals to
 
 ```
 (2 - (1 < 15)) and ("foo" != ("42" + '4'))

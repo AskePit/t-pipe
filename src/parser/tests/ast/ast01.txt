@@ -385,12 +385,7 @@ FunctionsChain
 				Expression
 					CompareExpression
 						Expression
-							FunctionsChain
-								FunctionData
-									XValue
-								FunctionCall
-									"len"
+							Id("len")
 						>
 						Expression
 							Literal(3)
----

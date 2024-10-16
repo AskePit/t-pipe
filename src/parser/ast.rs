@@ -22,6 +22,7 @@ impl AstDisplay for AstRootNode {
 pub enum ExpressionNode {
     Literal(LiteralNode),
     XValue,
+    ImplicitXValueOp(String),
     FunctionsChain(FunctionsChainNode),
     Negation(Box<ExpressionNode>),
     ArithmeticExpression(ArithmeticExpressionNode),
@@ -35,6 +36,7 @@ impl AstDisplay for ExpressionNode {
         match &self {
             ExpressionNode::Literal(l) => l.get_display_info(),
             ExpressionNode::XValue => (vec!["XValue".into()], vec![0]),
+            ExpressionNode::ImplicitXValueOp(id) => (vec![format!("Id(\"{}\")", &id)], vec![0]),
             ExpressionNode::FunctionsChain(ch) => ch.get_display_info(),
             ExpressionNode::Negation(e) => {
                 let mut info = e.get_display_info();
@@ -54,15 +56,6 @@ impl AstDisplay for ExpressionNode {
             ExpressionNode::TernaryOperator(op) => op.get_display_info(),
         }
     }
-}
-
-#[derive(PartialEq, Debug)]
-pub enum RightExpressionPart {
-    Arithmetic((ArithmeticOperationNode, Box<ExpressionNode>)),
-    Logic((LogicOperationNode, Box<ExpressionNode>)),
-    Compare((CompareOperationNode, Box<ExpressionNode>)),
-    TernaryOperator((Box<ExpressionNode>, Box<ExpressionNode>)),
-    FunctionsChain(Vec<FunctionCallNode>),
 }
 
 #[derive(PartialEq, Debug)]

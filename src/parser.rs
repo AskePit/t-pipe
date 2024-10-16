@@ -7,7 +7,7 @@ use crate::parser::ast::{
     format_ast_short, ArithmeticExpressionNode, ArithmeticOperationNode, AstRootNode,
     CompareExpressionNode, CompareOperationNode, ExpressionNode, FunctionArgumentNode,
     FunctionCallNode, FunctionDataNode, FunctionsChainNode, LambdaNode, LiteralNode,
-    LogicExpressionNode, LogicOperationNode, RightExpressionPart, TernaryOperatorNode,
+    LogicExpressionNode, LogicOperationNode, TernaryOperatorNode,
 };
 use crate::parser::lexer::{LexerError, Token};
 use ast::Ast;
@@ -30,6 +30,68 @@ pub struct Parser<'input> {
     lexer: Lexer<'input>,
 }
 
+#[derive(Copy, Clone)]
+enum Assoc {
+    Left,
+    Right,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Ord, PartialOrd)]
+#[repr(u8)]
+enum PrecedenceLevel {
+    Lowest = 1,
+
+    FunctionsChain = 10,
+    Ternary = 20,
+    Logic = 30,
+    Compare = 40,
+    Arithmetic = 50,
+    Unary = 60,
+
+    Strongest = 254,
+}
+
+impl PrecedenceLevel {
+    fn to_int(self) -> u8 {
+        self as u8
+    }
+
+    fn slightly_increased(&self) -> u8 {
+        self.to_int() + 1
+    }
+
+    fn slightly_decreased(&self) -> u8 {
+        self.to_int() - 1
+    }
+}
+
+fn get_precedence(token: &Token) -> Option<PrecedenceLevel> {
+    use Token::*;
+    match token {
+        Plus => Some(PrecedenceLevel::Arithmetic),
+        Minus => Some(PrecedenceLevel::Arithmetic),
+        Equal => Some(PrecedenceLevel::Compare),
+        NotEqual => Some(PrecedenceLevel::Compare),
+        Less => Some(PrecedenceLevel::Compare),
+        LessEqual => Some(PrecedenceLevel::Compare),
+        Greater => Some(PrecedenceLevel::Compare),
+        GreaterEqual => Some(PrecedenceLevel::Compare),
+        And => Some(PrecedenceLevel::Logic),
+        Or => Some(PrecedenceLevel::Logic),
+        Pipe => Some(PrecedenceLevel::FunctionsChain),
+        Question => Some(PrecedenceLevel::Ternary),
+        _ => None,
+    }
+}
+
+fn get_precedence_level_assoc(operation: PrecedenceLevel) -> Assoc {
+    use PrecedenceLevel::*;
+    match operation {
+        Ternary | Unary => Assoc::Right,
+        _ => Assoc::Left,
+    }
+}
+
 impl<'input> Parser<'input> {
     pub fn new(code: &'input str) -> Parser {
         Parser {
@@ -45,76 +107,146 @@ impl<'input> Parser<'input> {
 
     fn parse_program(&mut self) -> Result<AstRootNode, ParserError> {
         Ok(AstRootNode {
-            expression: self.parse_expression(None)?,
+            expression: self.parse_expression(None, PrecedenceLevel::Lowest.to_int())?,
         })
     }
 
     fn parse_expression(
         &mut self,
         first_token: Option<Token>,
+        precedence: u8,
     ) -> Result<Box<ExpressionNode>, ParserError> {
-        let has_first_token = first_token.is_some();
+        let mut left = self.parse_primary_expression(first_token)?;
 
-        let left = self.parse_left_expression(first_token)?;
-        let right = self.parse_right_expression(has_first_token)?;
+        // Now, process infix/postfix operators like binary and ternary ones
+        loop {
+            let operation = self.lexer.next()?;
 
-        if let Some(r) = right {
-            use RightExpressionPart::*;
-            match r {
-                Arithmetic((op, expr)) => Ok(Box::new(ExpressionNode::ArithmeticExpression(
+            let op_prec = get_precedence(&operation);
+            if op_prec.is_none() {
+                self.lexer.undo();
+                break;
+            }
+
+            let op_prec = op_prec.unwrap();
+            let assoc = get_precedence_level_assoc(op_prec);
+
+            // Handle left or right associativity
+            let l_prec = match assoc {
+                Assoc::Left => op_prec.slightly_decreased(),
+                Assoc::Right => op_prec.slightly_increased(),
+            };
+
+            // Handle left or right associativity
+            let r_prec = match assoc {
+                Assoc::Left => op_prec.slightly_increased(),
+                Assoc::Right => op_prec.slightly_decreased(),
+            };
+
+            // Check if we should stop based on precedence
+            if l_prec < precedence {
+                self.lexer.undo();
+                break;
+            }
+
+            // Special case for the ternary operator `? :`
+            if operation == Token::Question {
+                let expr = self.parse_ternary_operator()?;
+                left = Box::new(ExpressionNode::TernaryOperator(TernaryOperatorNode {
+                    check_expression: left,
+                    true_expression: expr.0,
+                    false_expression: expr.1,
+                }));
+                continue; // move to the next expression after handling ternary
+            }
+
+            // Special case for pipe operator `|`
+            if operation == Token::Pipe {
+                let calls = self.parse_functions_chain()?;
+
+                let data = match *left {
+                    ExpressionNode::Literal(literal) => {
+                        Ok(Box::new(FunctionDataNode::Literal(literal)))
+                    }
+                    ExpressionNode::XValue => Ok(Box::new(FunctionDataNode::XValue)),
+                    c => Err(ParserError::Unexpected(format!(
+                        "Expected data for a functions chain, got {}",
+                        format_ast_short(&c)
+                    ))),
+                }?;
+
+                left = Box::new(ExpressionNode::FunctionsChain(FunctionsChainNode {
+                    data,
+                    function_calls: calls,
+                }));
+                continue; // move to the next expression after handling chain
+            }
+
+            left = self.parse_infix(left, operation, r_prec)?;
+        }
+
+        Ok(left)
+    }
+
+    fn parse_infix(
+        &mut self,
+        left: Box<ExpressionNode>,
+        operation: Token,
+        precedence: u8,
+    ) -> Result<Box<ExpressionNode>, ParserError> {
+        use Token::*;
+        match operation {
+            Plus | Minus => {
+                let op = match operation {
+                    Plus => ArithmeticOperationNode::Plus,
+                    Minus => ArithmeticOperationNode::Minus,
+                    _ => unreachable!(),
+                };
+                Ok(Box::new(ExpressionNode::ArithmeticExpression(
                     ArithmeticExpressionNode {
                         l_expression: left,
                         operation: op,
-                        r_expression: expr,
+                        r_expression: self.parse_expression(None, precedence)?,
                     },
-                ))),
-                Logic((op, expr)) => Ok(Box::new(ExpressionNode::LogicExpression(
+                )))
+            }
+            And | Or => {
+                let op = match operation {
+                    And => LogicOperationNode::And,
+                    Or => LogicOperationNode::Or,
+                    _ => unreachable!(),
+                };
+                Ok(Box::new(ExpressionNode::LogicExpression(
                     LogicExpressionNode {
                         l_expression: left,
                         operation: op,
-                        r_expression: expr,
+                        r_expression: self.parse_expression(None, precedence)?,
                     },
-                ))),
-                Compare((op, expr)) => Ok(Box::new(ExpressionNode::CompareExpression(
+                )))
+            }
+            Equal | NotEqual | Less | LessEqual | Greater | GreaterEqual => {
+                let op = match operation {
+                    Equal => CompareOperationNode::Eq,
+                    NotEqual => CompareOperationNode::Neq,
+                    Less => CompareOperationNode::Lt,
+                    LessEqual => CompareOperationNode::Le,
+                    Greater => CompareOperationNode::Gt,
+                    GreaterEqual => CompareOperationNode::Ge,
+                    _ => unreachable!(),
+                };
+                Ok(Box::new(ExpressionNode::CompareExpression(
                     CompareExpressionNode {
                         l_expression: left,
                         operation: op,
-                        r_expression: expr,
+                        r_expression: self.parse_expression(None, precedence)?,
                     },
-                ))),
-                TernaryOperator(expr) => Ok(Box::new(ExpressionNode::TernaryOperator(
-                    TernaryOperatorNode {
-                        check_expression: left,
-                        true_expression: expr.0,
-                        false_expression: expr.1,
-                    },
-                ))),
-                FunctionsChain(calls) => {
-                    let data = match *left {
-                        ExpressionNode::Literal(literal) => {
-                            Ok(Box::new(FunctionDataNode::Literal(literal)))
-                        }
-                        ExpressionNode::XValue => Ok(Box::new(FunctionDataNode::XValue)),
-                        c => Err(ParserError::Unexpected(format!(
-                            "Expected data for a functions chain, got {}",
-                            format_ast_short(&c)
-                        ))),
-                    }?;
-
-                    Ok(Box::new(ExpressionNode::FunctionsChain(
-                        FunctionsChainNode {
-                            data,
-                            function_calls: calls,
-                        },
-                    )))
-                }
+                )))
             }
-        } else {
-            Ok(left)
+            _ => Err(ParserError::Unexpected("Expected expression!".to_string())),
         }
     }
 
-    fn parse_left_expression(
+    fn parse_primary_expression(
         &mut self,
         first_token: Option<Token>,
     ) -> Result<Box<ExpressionNode>, ParserError> {
@@ -131,9 +263,10 @@ impl<'input> Parser<'input> {
                 self.parse_literal(token)?,
             ))),
             XValue => Ok(Box::new(ExpressionNode::XValue)),
+            Identifier(id) => Ok(Box::new(ExpressionNode::ImplicitXValueOp(id.to_string()))),
             ParenthesisBegin => self.parse_parenthesis_expression(),
             Minus => Ok(Box::new(ExpressionNode::Negation(
-                self.parse_expression(None)?,
+                self.parse_expression(None, PrecedenceLevel::Unary.to_int())?,
             ))),
             t => Err(ParserError::Unexpected(format!(
                 "Expected expression beginning, got {}",
@@ -143,7 +276,7 @@ impl<'input> Parser<'input> {
     }
 
     fn parse_parenthesis_expression(&mut self) -> Result<Box<ExpressionNode>, ParserError> {
-        let expr = self.parse_expression(None)?;
+        let expr = self.parse_expression(None, PrecedenceLevel::Lowest.to_int())?;
 
         let token = self.lexer.next()?;
         if token == Token::ParenthesisEnd {
@@ -153,69 +286,6 @@ impl<'input> Parser<'input> {
                 "Expected ')', got {}",
                 token
             )))
-        }
-    }
-
-    fn parse_right_expression(
-        &mut self,
-        without_function_chain: bool,
-    ) -> Result<Option<RightExpressionPart>, ParserError> {
-        let token = self.lexer.next()?;
-
-        use Token::*;
-        match token {
-            Plus | Minus => {
-                let op = match token {
-                    Plus => ArithmeticOperationNode::Plus,
-                    Minus => ArithmeticOperationNode::Minus,
-                    _ => unreachable!(),
-                };
-                Ok(Some(RightExpressionPart::Arithmetic((
-                    op,
-                    self.parse_expression(None)?,
-                ))))
-            }
-            And | Or => {
-                let op = match token {
-                    And => LogicOperationNode::And,
-                    Or => LogicOperationNode::Or,
-                    _ => unreachable!(),
-                };
-                Ok(Some(RightExpressionPart::Logic((
-                    op,
-                    self.parse_expression(None)?,
-                ))))
-            }
-            Equal | NotEqual | Less | LessEqual | Greater | GreaterEqual => {
-                let op = match token {
-                    Equal => CompareOperationNode::Eq,
-                    NotEqual => CompareOperationNode::Neq,
-                    Less => CompareOperationNode::Lt,
-                    LessEqual => CompareOperationNode::Le,
-                    Greater => CompareOperationNode::Gt,
-                    GreaterEqual => CompareOperationNode::Ge,
-                    _ => unreachable!(),
-                };
-                Ok(Some(RightExpressionPart::Compare((
-                    op,
-                    self.parse_expression(None)?,
-                ))))
-            }
-            Question => Ok(Some(RightExpressionPart::TernaryOperator(
-                self.parse_ternary_operator()?,
-            ))),
-            Pipe => Ok(if without_function_chain {
-                self.lexer.undo();
-                None
-            } else {
-                Some(RightExpressionPart::FunctionsChain(
-                    self.parse_functions_chain()?,
-                ))
-            }),
-            _ => {
-                self.lexer.undo();
-                Ok(None)
-            }
         }
     }
 
@@ -274,7 +344,7 @@ impl<'input> Parser<'input> {
     fn parse_ternary_operator(
         &mut self,
     ) -> Result<(Box<ExpressionNode>, Box<ExpressionNode>), ParserError> {
-        let true_expression = self.parse_expression(None)?;
+        let true_expression = self.parse_expression(None, PrecedenceLevel::Ternary.to_int())?;
 
         let token = self.lexer.next()?;
         if token != Token::Colon {
@@ -284,7 +354,7 @@ impl<'input> Parser<'input> {
             )));
         }
 
-        let false_expression = self.parse_expression(None)?;
+        let false_expression = self.parse_expression(None, PrecedenceLevel::Ternary.to_int())?;
 
         Ok((true_expression, false_expression))
     }
@@ -324,7 +394,10 @@ impl<'input> Parser<'input> {
                     }
                     ArrayBracketBegin | StringLiteral(_) | CharLiteral(_) | IntLiteral(_)
                     | BoolLiteral(_) | XValue | ParenthesisBegin | Minus => {
-                        FunctionArgumentNode::Expression(self.parse_expression(Some(token))?)
+                        FunctionArgumentNode::Expression(self.parse_expression(
+                            Some(token),
+                            PrecedenceLevel::FunctionsChain.to_int(),
+                        )?)
                     }
                     Eof => break,
                     _ => {
@@ -342,30 +415,16 @@ impl<'input> Parser<'input> {
     }
 
     fn parse_anonymous_lambda(&mut self) -> Result<Box<ExpressionNode>, ParserError> {
-        let token = self.lexer.next()?;
-
-        let expr = if let Token::Identifier(_) = token {
-            // implicit XValue functions chain detected!
-            self.lexer.undo();
-            Box::new(ExpressionNode::FunctionsChain(FunctionsChainNode {
-                data: Box::new(FunctionDataNode::XValue),
-                function_calls: self.parse_functions_chain()?,
-            }))
-        } else {
-            self.lexer.undo();
-            // HACK: Do not pass token! It'll stop full function chaining parsing
-            // TODO: fix that hack inside `parse_expression -> parse_right_expression`
-            self.parse_expression(None)?
-        };
+        let expr = self.parse_expression(None, PrecedenceLevel::Lowest.to_int())?;
 
         let token = self.lexer.next()?;
         if token == Token::LambdaBracketEnd {
             Ok(expr)
         } else {
-            return Err(ParserError::Unexpected(format!(
+            Err(ParserError::Unexpected(format!(
                 "Expected '}}', got {}",
                 token
-            )));
+            )))
         }
     }
 }
