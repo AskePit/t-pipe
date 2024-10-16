@@ -55,11 +55,9 @@ impl PrecedenceLevel {
     fn to_int(self) -> u8 {
         self as u8
     }
-
     fn slightly_increased(&self) -> u8 {
         self.to_int() + 1
     }
-
     fn slightly_decreased(&self) -> u8 {
         self.to_int() - 1
     }
@@ -107,16 +105,12 @@ impl<'input> Parser<'input> {
 
     fn parse_program(&mut self) -> Result<AstRootNode, ParserError> {
         Ok(AstRootNode {
-            expression: self.parse_expression(None, PrecedenceLevel::Lowest.to_int())?,
+            expression: self.parse_expression(PrecedenceLevel::Lowest.to_int())?,
         })
     }
 
-    fn parse_expression(
-        &mut self,
-        first_token: Option<Token>,
-        precedence: u8,
-    ) -> Result<Box<ExpressionNode>, ParserError> {
-        let mut left = self.parse_primary_expression(first_token)?;
+    fn parse_expression(&mut self, precedence: u8) -> Result<Box<ExpressionNode>, ParserError> {
+        let mut left = self.parse_primary_expression()?;
 
         // Now, process infix/postfix operators like binary and ternary ones
         loop {
@@ -131,16 +125,9 @@ impl<'input> Parser<'input> {
             let op_prec = op_prec.unwrap();
             let assoc = get_precedence_level_assoc(op_prec);
 
-            // Handle left or right associativity
             let l_prec = match assoc {
                 Assoc::Left => op_prec.slightly_decreased(),
                 Assoc::Right => op_prec.slightly_increased(),
-            };
-
-            // Handle left or right associativity
-            let r_prec = match assoc {
-                Assoc::Left => op_prec.slightly_increased(),
-                Assoc::Right => op_prec.slightly_decreased(),
             };
 
             // Check if we should stop based on precedence
@@ -182,6 +169,11 @@ impl<'input> Parser<'input> {
                 continue; // move to the next expression after handling chain
             }
 
+            let r_prec = match assoc {
+                Assoc::Left => op_prec.slightly_increased(),
+                Assoc::Right => op_prec.slightly_decreased(),
+            };
+
             left = self.parse_infix(left, operation, r_prec)?;
         }
 
@@ -206,7 +198,7 @@ impl<'input> Parser<'input> {
                     ArithmeticExpressionNode {
                         l_expression: left,
                         operation: op,
-                        r_expression: self.parse_expression(None, precedence)?,
+                        r_expression: self.parse_expression(precedence)?,
                     },
                 )))
             }
@@ -220,7 +212,7 @@ impl<'input> Parser<'input> {
                     LogicExpressionNode {
                         l_expression: left,
                         operation: op,
-                        r_expression: self.parse_expression(None, precedence)?,
+                        r_expression: self.parse_expression(precedence)?,
                     },
                 )))
             }
@@ -238,7 +230,7 @@ impl<'input> Parser<'input> {
                     CompareExpressionNode {
                         l_expression: left,
                         operation: op,
-                        r_expression: self.parse_expression(None, precedence)?,
+                        r_expression: self.parse_expression(precedence)?,
                     },
                 )))
             }
@@ -246,15 +238,8 @@ impl<'input> Parser<'input> {
         }
     }
 
-    fn parse_primary_expression(
-        &mut self,
-        first_token: Option<Token>,
-    ) -> Result<Box<ExpressionNode>, ParserError> {
-        let token = if let Some(t) = first_token {
-            t
-        } else {
-            self.lexer.next()?
-        };
+    fn parse_primary_expression(&mut self) -> Result<Box<ExpressionNode>, ParserError> {
+        let token = self.lexer.next()?;
 
         use Token::*;
         match &token {
@@ -266,7 +251,7 @@ impl<'input> Parser<'input> {
             Identifier(id) => Ok(Box::new(ExpressionNode::ImplicitXValueOp(id.to_string()))),
             ParenthesisBegin => self.parse_parenthesis_expression(),
             Minus => Ok(Box::new(ExpressionNode::Negation(
-                self.parse_expression(None, PrecedenceLevel::Unary.to_int())?,
+                self.parse_expression(PrecedenceLevel::Unary.to_int())?,
             ))),
             t => Err(ParserError::Unexpected(format!(
                 "Expected expression beginning, got {}",
@@ -276,7 +261,7 @@ impl<'input> Parser<'input> {
     }
 
     fn parse_parenthesis_expression(&mut self) -> Result<Box<ExpressionNode>, ParserError> {
-        let expr = self.parse_expression(None, PrecedenceLevel::Lowest.to_int())?;
+        let expr = self.parse_expression(PrecedenceLevel::Lowest.to_int())?;
 
         let token = self.lexer.next()?;
         if token == Token::ParenthesisEnd {
@@ -344,7 +329,7 @@ impl<'input> Parser<'input> {
     fn parse_ternary_operator(
         &mut self,
     ) -> Result<(Box<ExpressionNode>, Box<ExpressionNode>), ParserError> {
-        let true_expression = self.parse_expression(None, PrecedenceLevel::Ternary.to_int())?;
+        let true_expression = self.parse_expression(PrecedenceLevel::Ternary.to_int())?;
 
         let token = self.lexer.next()?;
         if token != Token::Colon {
@@ -354,7 +339,7 @@ impl<'input> Parser<'input> {
             )));
         }
 
-        let false_expression = self.parse_expression(None, PrecedenceLevel::Ternary.to_int())?;
+        let false_expression = self.parse_expression(PrecedenceLevel::Ternary.to_int())?;
 
         Ok((true_expression, false_expression))
     }
@@ -394,10 +379,10 @@ impl<'input> Parser<'input> {
                     }
                     ArrayBracketBegin | StringLiteral(_) | CharLiteral(_) | IntLiteral(_)
                     | BoolLiteral(_) | XValue | ParenthesisBegin | Minus => {
-                        FunctionArgumentNode::Expression(self.parse_expression(
-                            Some(token),
-                            PrecedenceLevel::FunctionsChain.to_int(),
-                        )?)
+                        self.lexer.undo();
+                        FunctionArgumentNode::Expression(
+                            self.parse_expression(PrecedenceLevel::FunctionsChain.to_int())?,
+                        )
                     }
                     Eof => break,
                     _ => {
@@ -415,7 +400,7 @@ impl<'input> Parser<'input> {
     }
 
     fn parse_anonymous_lambda(&mut self) -> Result<Box<ExpressionNode>, ParserError> {
-        let expr = self.parse_expression(None, PrecedenceLevel::Lowest.to_int())?;
+        let expr = self.parse_expression(PrecedenceLevel::Lowest.to_int())?;
 
         let token = self.lexer.next()?;
         if token == Token::LambdaBracketEnd {
