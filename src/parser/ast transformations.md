@@ -107,25 +107,40 @@ Probably this transformation will not be necessary since it could be potentially
 
 Code:
 ```
-{ split '.' | collect }
+{ len > 3 }
 ->
-{ x | split '.' | collect }
+{ (x | len) > 3 }
 ```
 
 AST transformation:
 ```
-?
+Lambda
+    Expression
+        CompareExpression
+            Expression
+                Id("len")
+            >
+            Expression
+                Literal(3)
 ->
 Lambda
     Expression
-        FunctionsChain
-            FunctionData
-                XValue
-                FunctionCall
-					"split"
-					FunctionArgument
-					    Expression
-				            Literal('\'')
-				FunctionCall
-					"collect"
+        CompareExpression
+            Expression
+                FunctionsChain
+                    FunctionData
+                        XValue
+                    FunctionCall
+                        "len"
+            >
+            Expression
+                Literal(3)
+```
+
+Unresolved case:
+
+```
+{ split '.' | collect }
+->
+{ x | split '.' | collect }
 ```
