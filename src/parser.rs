@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-mod ast;
+pub(crate) mod ast;
 mod lexer;
 
 use crate::parser::ast::{
