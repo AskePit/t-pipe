@@ -68,3 +68,88 @@ fn compile_time_string_equality(src_expr: Box<ExpressionNode>) -> Box<Expression
     }
     src_expr
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::ast::{format_ast_short, Ast, AstRootNode};
+    use crate::parser::Parser;
+
+    fn parse(code: &str) -> Ast {
+        let mut parser = Parser::new(code);
+
+        let ast = parser.parse();
+
+        if let Err(e) = &ast {
+            println!("Parser error is: {:?}", e);
+        }
+
+        assert!(ast.is_ok());
+
+        let ast = ast.unwrap();
+        ast
+    }
+
+    #[test]
+    fn test_transformations() {
+        {
+            let mut ast = parse("-15");
+
+            assert_eq!(
+                format_ast_short(&ast),
+                r#"
+Negation
+    Expression
+        Literal(15)
+            "#
+                .trim()
+                .replace("    ", "\t")
+            );
+
+            ast.root.expression = merge_negation(ast.root.expression);
+
+            assert_eq!(format_ast_short(&ast), "Literal(-15)");
+        }
+
+        {
+            let mut ast = parse("-15 - 15");
+
+            assert_eq!(
+                format_ast_short(&ast),
+                r#"
+ArithmeticExpression
+    Expression
+        Negation
+            Expression
+                Literal(15)
+    -
+    Expression
+        Literal(15)
+            "#
+                .trim()
+                .replace("    ", "\t")
+            );
+
+            let mut arithm_node = match ast.root.expression.as_mut() {
+                ExpressionNode::ArithmeticExpression(ref mut expr) => expr,
+                _ => unreachable!(),
+            };
+
+            arithm_node.l_expression = merge_negation(arithm_node.l_expression);
+
+            assert_eq!(
+                format_ast_short(&ast),
+                r#"
+ArithmeticExpression
+    Expression
+        Literal(-15)
+    -
+    Expression
+        Literal(15)
+            "#
+                .trim()
+                .replace("    ", "\t")
+            );
+        }
+    }
+}
