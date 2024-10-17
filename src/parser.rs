@@ -152,10 +152,8 @@ impl<'input> Parser<'input> {
                 let calls = self.parse_functions_chain()?;
 
                 let data = match *left {
-                    ExpressionNode::Literal(literal) => {
-                        Ok(Box::new(FunctionDataNode::Literal(literal)))
-                    }
-                    ExpressionNode::XValue => Ok(Box::new(FunctionDataNode::XValue)),
+                    ExpressionNode::Literal(literal) => Ok(FunctionDataNode::Literal(literal)),
+                    ExpressionNode::XValue => Ok(FunctionDataNode::XValue),
                     c => Err(ParserError::Unexpected(format!(
                         "Expected data for a functions chain, got {}",
                         format_ast_short(&c)

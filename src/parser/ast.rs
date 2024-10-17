@@ -93,7 +93,7 @@ impl AstDisplay for LiteralNode {
 
 #[derive(PartialEq, Debug)]
 pub struct FunctionsChainNode {
-    pub data: Box<FunctionDataNode>,
+    pub data: FunctionDataNode,
     pub function_calls: Vec<FunctionCallNode>,
 }
 
