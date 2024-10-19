@@ -18,9 +18,10 @@ impl AstDisplay for AstRootNode {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Default)]
 pub enum ExpressionNode {
     Literal(LiteralNode),
+    #[default]
     XValue,
     ImplicitXValueOp(String),
     FunctionsChain(FunctionsChainNode),

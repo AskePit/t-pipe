@@ -135,7 +135,8 @@ ArithmeticExpression
                 _ => unreachable!(),
             };
 
-            arithm_node.l_expression = merge_negation(arithm_node.l_expression);
+            let l_expr = std::mem::take(&mut arithm_node.l_expression);
+            arithm_node.l_expression = merge_negation(l_expr);
 
             assert_eq!(
                 format_ast_short(&ast),
