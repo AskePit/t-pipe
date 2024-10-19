@@ -1,8 +1,6 @@
 #![allow(dead_code)]
 
-use crate::parser::ast::{
-    ArithmeticOperationNode, CompareOperationNode, ExpressionNode, LiteralNode,
-};
+use crate::ast::{ArithmeticOperationNode, CompareOperationNode, ExpressionNode, LiteralNode};
 
 fn merge_negation(expr: Box<ExpressionNode>) -> Box<ExpressionNode> {
     if let ExpressionNode::Negation(expr) = expr.as_ref() {
@@ -72,7 +70,7 @@ fn compile_time_string_equality(src_expr: Box<ExpressionNode>) -> Box<Expression
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::ast::{format_ast_short, Ast, AstRootNode};
+    use crate::ast::{format_ast_short, Ast};
     use crate::parser::Parser;
 
     fn parse(code: &str) -> Ast {
@@ -130,7 +128,7 @@ ArithmeticExpression
                 .replace("    ", "\t")
             );
 
-            let mut arithm_node = match ast.root.expression.as_mut() {
+            let arithm_node = match ast.root.expression.as_mut() {
                 ExpressionNode::ArithmeticExpression(ref mut expr) => expr,
                 _ => unreachable!(),
             };

@@ -1,17 +1,14 @@
 #![allow(dead_code)]
 
-pub(crate) mod ast;
-mod lexer;
-
-use crate::parser::ast::{
+use crate::ast::Ast;
+use crate::ast::{
     format_ast_short, ArithmeticExpressionNode, ArithmeticOperationNode, AstRootNode,
     CompareExpressionNode, CompareOperationNode, ExpressionNode, FunctionArgumentNode,
     FunctionCallNode, FunctionDataNode, FunctionsChainNode, LambdaNode, LiteralNode,
     LogicExpressionNode, LogicOperationNode, TernaryOperatorNode,
 };
-use crate::parser::lexer::{LexerError, Token};
-use ast::Ast;
-use lexer::Lexer;
+use crate::lexer::Lexer;
+use crate::lexer::{LexerError, Token};
 
 #[derive(Debug)]
 pub enum ParserError {
@@ -415,7 +412,7 @@ impl<'input> Parser<'input> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::ast::format_ast_short;
+    use crate::ast::format_ast_short;
     use std::fs::File;
     use std::io::Read;
 
@@ -482,7 +479,7 @@ FunctionsChain
 
     #[test]
     fn parse_from_file() {
-        let mut file = File::open("src/parser/tests/ast/ast01.txt").unwrap();
+        let mut file = File::open("src/tests/ast/ast01.txt").unwrap();
         let mut contents = String::new();
         let _ = file.read_to_string(&mut contents);
 
