@@ -1,21 +1,20 @@
 #![allow(dead_code)]
 
-use crate::ast::{ArithmeticOperationNode, CompareOperationNode, ExpressionNode, LiteralNode};
+use crate::ast::{ArithmeticOperationNode, Ast, CompareOperationNode, ExpressionNode, LiteralNode};
 
-fn merge_negation(expr: Box<ExpressionNode>) -> Box<ExpressionNode> {
-    if let ExpressionNode::Negation(expr) = expr.as_ref() {
-        if let ExpressionNode::Literal(LiteralNode::Int(val)) = expr.as_ref() {
-            return Box::new(ExpressionNode::Literal(LiteralNode::Int(-val)));
+fn merge_negation(src_expr: &mut Box<ExpressionNode>) {
+    if let ExpressionNode::Negation(expr) = src_expr.as_mut() {
+        if let ExpressionNode::Literal(LiteralNode::Int(val)) = expr.as_mut() {
+            *src_expr = Box::new(ExpressionNode::Literal(LiteralNode::Int(-*val)));
         }
     }
-    expr
 }
 
-fn compile_time_int_calc(expr: Box<ExpressionNode>) -> Box<ExpressionNode> {
-    if let ExpressionNode::ArithmeticExpression(expr) = expr.as_ref() {
+fn compile_time_int_calc(src_expr: &mut Box<ExpressionNode>) {
+    if let ExpressionNode::ArithmeticExpression(expr) = src_expr.as_ref() {
         if let ExpressionNode::Literal(LiteralNode::Int(l_val)) = expr.l_expression.as_ref() {
             if let ExpressionNode::Literal(LiteralNode::Int(r_val)) = expr.r_expression.as_ref() {
-                return Box::new(ExpressionNode::Literal(LiteralNode::Int(
+                *src_expr = Box::new(ExpressionNode::Literal(LiteralNode::Int(
                     match expr.operation {
                         ArithmeticOperationNode::Plus => l_val + r_val,
                         ArithmeticOperationNode::Minus => l_val - r_val,
@@ -24,14 +23,13 @@ fn compile_time_int_calc(expr: Box<ExpressionNode>) -> Box<ExpressionNode> {
             }
         }
     }
-    expr
 }
 
-fn compile_time_int_compare(expr: Box<ExpressionNode>) -> Box<ExpressionNode> {
-    if let ExpressionNode::CompareExpression(expr) = expr.as_ref() {
+fn compile_time_int_compare(src_expr: &mut Box<ExpressionNode>) {
+    if let ExpressionNode::CompareExpression(expr) = src_expr.as_ref() {
         if let ExpressionNode::Literal(LiteralNode::Int(l_val)) = expr.l_expression.as_ref() {
             if let ExpressionNode::Literal(LiteralNode::Int(r_val)) = expr.r_expression.as_ref() {
-                return Box::new(ExpressionNode::Literal(LiteralNode::Bool(
+                *src_expr = Box::new(ExpressionNode::Literal(LiteralNode::Bool(
                     match expr.operation {
                         CompareOperationNode::Eq => l_val == r_val,
                         CompareOperationNode::Neq => l_val != r_val,
@@ -44,27 +42,31 @@ fn compile_time_int_compare(expr: Box<ExpressionNode>) -> Box<ExpressionNode> {
             }
         }
     }
-    expr
 }
 
-fn compile_time_string_equality(src_expr: Box<ExpressionNode>) -> Box<ExpressionNode> {
+fn compile_time_string_equality(src_expr: &mut Box<ExpressionNode>) {
     if let ExpressionNode::CompareExpression(expr) = src_expr.as_ref() {
         if let ExpressionNode::Literal(LiteralNode::String(l_val)) = expr.l_expression.as_ref() {
             if let ExpressionNode::Literal(LiteralNode::String(r_val)) = expr.r_expression.as_ref()
             {
-                return match expr.operation {
+                match expr.operation {
                     CompareOperationNode::Eq => {
-                        Box::new(ExpressionNode::Literal(LiteralNode::Bool(l_val == r_val)))
+                        *src_expr =
+                            Box::new(ExpressionNode::Literal(LiteralNode::Bool(l_val == r_val)))
                     }
                     CompareOperationNode::Neq => {
-                        Box::new(ExpressionNode::Literal(LiteralNode::Bool(l_val != r_val)))
+                        *src_expr =
+                            Box::new(ExpressionNode::Literal(LiteralNode::Bool(l_val != r_val)))
                     }
-                    _ => src_expr,
+                    _ => {}
                 };
             }
         }
     }
-    src_expr
+}
+
+pub fn transform_ast(ast: &mut Ast) {
+    todo!();
 }
 
 #[cfg(test)]
@@ -89,7 +91,7 @@ Negation
                 .replace("    ", "\t")
             );
 
-            ast.root.expression = merge_negation(ast.root.expression);
+            merge_negation(&mut ast.root.expression);
 
             assert_eq!(format_ast_short(&ast), "Literal(-15)");
         }
@@ -118,8 +120,7 @@ ArithmeticExpression
                 _ => unreachable!(),
             };
 
-            let l_expr = std::mem::take(&mut arithm_node.l_expression);
-            arithm_node.l_expression = merge_negation(l_expr);
+            merge_negation(&mut arithm_node.l_expression);
 
             assert_eq!(
                 format_ast_short(&ast),
