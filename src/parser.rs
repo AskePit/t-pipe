@@ -411,25 +411,10 @@ impl<'input> Parser<'input> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::ast::format_ast_short;
+    use crate::test_utils::tests::parse;
     use std::fs::File;
     use std::io::Read;
-
-    fn parse(code: &str) -> Ast {
-        let mut parser = Parser::new(code);
-
-        let ast = parser.parse();
-
-        if let Err(e) = &ast {
-            println!("Parser error is: {:?}", e);
-        }
-
-        assert!(ast.is_ok());
-
-        let ast = ast.unwrap();
-        ast
-    }
 
     #[test]
     fn parse_the_simplest() {

@@ -70,23 +70,8 @@ fn compile_time_string_equality(src_expr: Box<ExpressionNode>) -> Box<Expression
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::{format_ast_short, Ast};
-    use crate::parser::Parser;
-
-    fn parse(code: &str) -> Ast {
-        let mut parser = Parser::new(code);
-
-        let ast = parser.parse();
-
-        if let Err(e) = &ast {
-            println!("Parser error is: {:?}", e);
-        }
-
-        assert!(ast.is_ok());
-
-        let ast = ast.unwrap();
-        ast
-    }
+    use crate::ast::format_ast_short;
+    use crate::test_utils::tests::parse;
 
     #[test]
     fn test_transformations() {
